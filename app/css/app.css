@@ -449,6 +449,18 @@ em, .lit { font-family: var(--font-head); font-style: italic; font-weight: 500; 
 .savings-card .row-btns .btn { flex: 1; height: 40px; font-size: 15px; }
 .savings-card .avo { position: absolute; right: -12px; top: -14px; font-size: 92px; opacity: 0.18; transform: rotate(-14deg); pointer-events: none; }
 
+/* ===== Debt bosses ===== */
+.hp { position: relative; height: 18px; border-radius: 9px; background: var(--track); margin: 14px 0 8px; overflow: hidden; }
+.hp > i { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--critical), #F2A27A); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.hp > span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--text); letter-spacing: 0.02em; }
+.boss.target { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
+.preset.on-preset { box-shadow: 0 0 0 2px var(--accent); }
+.debt-card { display: flex; align-items: center; gap: 12px; color: inherit; }
+.debt-card .e { width: 44px; height: 44px; border-radius: 14px; background: var(--card-2); display: grid; place-items: center; font-size: 24px; flex: 0 0 auto; }
+.debt-card .mid { flex: 1; min-width: 0; }
+.debt-card .mid b { font-size: 16px; }
+.debt-card .mid small { display: block; color: var(--muted); font-size: 12.5px; }
+
 /* ===== Game ===== */
 .lvl-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 6px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); font-size: 13.5px; font-weight: 700; color: var(--text); }
 .lvl-chip .ring { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--on-accent);

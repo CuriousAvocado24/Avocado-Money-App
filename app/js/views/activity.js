@@ -66,7 +66,7 @@ function renderList(root) {
             return `<button class="row" data-inc="${e.id}"><span class="e">${sc.emoji}</span><div class="main"><div class="t1">${esc(e.from || sc.name)}</div><div class="t2">${esc(sc.name)}${e.recurringId ? ' · 🔁' : ''}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="right"><div class="amt inc-amt">+${money(e.amount)}</div></div></button>`;
           }
           const c = cat(e.category);
-          return `<button class="row" data-id="${e.id}"><span class="e">${c.emoji}</span><div class="main"><div class="t1">${esc(e.merchant || c.name)}</div><div class="t2">${esc(c.name)} · ${methodEmoji(e.method)} ${esc(e.method)}${e.recurringId ? ' · 🔁' : ''}${e.receiptId ? ' · 🧾' : ''}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="right"><div class="amt">−${money(e.amount)}</div></div></button>`;
+          return `<button class="row" data-id="${e.id}"><span class="e">${c.emoji}</span><div class="main"><div class="t1">${esc(e.merchant || c.name)}</div><div class="t2">${esc(c.name)} · ${methodEmoji(e.method)} ${esc(e.method)}${e.recurringId ? ' · 🔁' : ''}${e.debtId ? ' · ⚔️' : ''}${e.receiptId ? ' · 🧾' : ''}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="right"><div class="amt">−${money(e.amount)}</div></div></button>`;
         }).join('') + '</div>';
       dayItems = [];
     };

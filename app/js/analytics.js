@@ -122,11 +122,11 @@ export function vsLastMonth(key, dayNum) {
 /** Find repeating charges that look like subscriptions but aren't tracked yet. */
 export function detectSubscriptions() {
   const tracked = new Set(state.recurring.map((r) => normMerchant(r.name)));
-  const skip = new Set(['food', 'groceries', 'coffee', 'transport', 'gas', 'shopping']);
+  const skip = new Set(['food', 'groceries', 'coffee', 'transport', 'gas', 'shopping', 'debt']);
   const groups = new Map();
   const since = addDays(todayISO(), -120);
   for (const e of state.expenses) {
-    if (e.recurringId || e.date < since || skip.has(e.category)) continue;
+    if (e.recurringId || e.debtId || e.date < since || skip.has(e.category)) continue;
     const k = normMerchant(e.merchant);
     if (!k || tracked.has(k) || /\b(fee|fees|penalty|interest|charge)\b/.test(k)) continue;
     if (!groups.has(k)) groups.set(k, []);

@@ -8,6 +8,7 @@ import { columnChart, groupedChart } from '../charts.js';
 import { sum, byCategory, byMerchant, dailyTotals, monthlyTotals, monthStatus, vsLastMonth, fixedMonthly, occurrences, incomeInMonth, effectiveIncome } from '../analytics.js';
 import { buildInsights } from '../engine.js';
 import { gameState, goalStage } from '../game.js';
+import { activeOwes, owedToMe, isCleared, totalOwed, totalOwedToMe, debtPlan, monthYear, boss } from '../debts.js';
 import { openSettings, openPaySheet, openInstallHelp, openSavingsSheet, loadDemo } from '../sheets.js';
 import { setActivityFilter } from './activity.js';
 
@@ -102,6 +103,20 @@ export function render(root) {
       <a class="tile" href="#/bills"><span class="tile-label">Due in 7 days</span><span class="tile-value">${moneyRound(due7t)}</span><span class="tile-foot">${due7.length ? due7.slice(0, 2).map((o) => esc(o.r.name)).join(', ') + (due7.length > 2 ? '…' : '') : 'nothing due'}</span></a>
     </div>`;
 
+  // ---- Debts
+  let debtCard = '';
+  if (state.debts.length) {
+    const act = activeOwes();
+    const plan = debtPlan();
+    const lentOut = owedToMe().filter((d) => !isCleared(d));
+    debtCard = `<a class="card debt-card" href="#/debts">
+      <span class="e">${act.length ? boss(plan.order[0]?.debt || act[0]).emoji : '🕊️'}</span>
+      <span class="mid"><b>${act.length ? `You owe ${moneyRound(totalOwed())}` : 'Debt-free'}</b>
+        <small>${act.length ? (plan.stuck ? 'Raise a payment to beat the interest' : `${act.length} ${act.length === 1 ? 'boss' : 'bosses'} · debt-free by ${esc(monthYear(plan.date))}`) : 'Every boss defeated'}${lentOut.length ? ` · ${moneyRound(totalOwedToMe())} owed to you` : ''}</small></span>
+      <span class="btn small primary">⚔️ Battle</span>
+    </a>`;
+  }
+
   // ---- Insight teaser
   let teaser = '';
   if (s.isCurrent) {
@@ -162,7 +177,7 @@ export function render(root) {
     <div class="row"><span class="e">${cat(o.r.category).emoji}</span><div class="main"><div class="t1">${esc(o.r.name)}</div><div class="t2">${o.overdue ? '<span class="badge bad">Overdue</span> ' : ''}${fmtShort(o.date)} · ${inDays(o.date)}${o.r.autoLog ? ' · auto' : ''}</div></div>
     <div class="right"><div class="amt">${money(o.r.amount)}</div>${!o.r.autoLog ? `<button class="btn small" data-pay="${i}" style="margin-top:4px">Pay</button>` : ''}</div></div>`).join('')}</div>` : '';
 
-  root.innerHTML = header + savingsCard + hero + tiles + teaser + trendCard + dailyCard + catCard + nwCard + upCard + merchCard;
+  root.innerHTML = header + savingsCard + hero + tiles + debtCard + teaser + trendCard + dailyCard + catCard + nwCard + upCard + merchCard;
   wire(root, { up });
 
   const daily = dailyTotals(key, true);

@@ -22,6 +22,7 @@ export const state = {
   expenses: [],
   income: [],
   goals: [],
+  debts: [],
   checkins: [],
   seenBadges: {},
   recurring: [],
@@ -44,10 +45,11 @@ const sortExp = () => state.expenses.sort(byDateDesc);
 export const normMerchant = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 export async function load() {
-  const [ex, inc, goals, checkins, seen, rec, settings, mm] = await Promise.all([
+  const [ex, inc, goals, debts, checkins, seen, rec, settings, mm] = await Promise.all([
     db.all('expenses'),
     db.all('income'),
     db.all('goals'),
+    db.all('debts'),
     db.get('meta', 'checkins'),
     db.get('meta', 'seenBadges'),
     db.all('recurring'),
@@ -58,6 +60,7 @@ export async function load() {
   sortExp();
   state.income = inc.sort(byDateDesc);
   state.goals = goals.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  state.debts = debts.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   state.checkins = checkins || [];
   state.seenBadges = seen || {};
   state.recurring = rec;
@@ -101,6 +104,7 @@ function makeExpense(data) {
     method: data.method || 'Cash',
     receiptId: data.receiptId || null,
     recurringId: data.recurringId || null,
+    debtId: data.debtId || null,
     demo: !!data.demo,
     createdAt: data.createdAt || Date.now(),
   };
@@ -248,6 +252,45 @@ export async function markBadgesSeen(ids) {
   await db.put('meta', { ...state.seenBadges }, 'seenBadges');
 }
 
+/* ---------- Debts (boss battles) ---------- */
+
+export async function saveDebt(d) {
+  if (!d.id) {
+    d.id = uid();
+    d.createdAt = Date.now();
+    d.history = d.history || [];
+    state.debts.push(d);
+  } else {
+    const i = state.debts.findIndex((x) => x.id === d.id);
+    if (i >= 0) state.debts[i] = d;
+  }
+  ['original', 'rate', 'minPay', 'plan'].forEach((k) => { d[k] = Math.round((Number(d[k]) || 0) * 100) / 100; });
+  await db.put('debts', d);
+  emit();
+  return d;
+}
+
+export async function deleteDebt(id) {
+  state.debts = state.debts.filter((d) => d.id !== id);
+  await db.del('debts', id);
+  // Keep past payments in your spending history, just unlink them.
+  for (const e of state.expenses.filter((x) => x.debtId === id)) { e.debtId = null; await db.put('expenses', e); }
+  emit();
+}
+
+/** Record something on the debt itself: 'collect' (someone paid you back) or 'add' (borrowed / lent more). */
+export async function debtHistory(d, kind, amount, date = todayISO()) {
+  d.history = [...(d.history || []), { kind, amount: Math.round(Number(amount) * 100) / 100, date, at: Date.now() }];
+  await db.put('debts', d);
+  emit();
+}
+
+/** Nudge the savings number without logging income/spending (used when lending or being paid back). */
+export async function adjustSavings(delta) {
+  if (!savingsIsSet()) return;
+  await setSavingsBalance(savingsBalance() + delta);
+}
+
 /* ---------- Savings balance ---------- */
 
 /** Counts toward savings if it happened after the moment you set your balance. */
@@ -360,6 +403,7 @@ export async function exportAll() {
     expenses: state.expenses,
     income: state.income,
     goals: state.goals,
+    debts: state.debts,
     checkins: state.checkins,
     seenBadges: state.seenBadges,
     recurring: state.recurring,
@@ -369,8 +413,9 @@ export async function exportAll() {
 
 export async function importAll(data) {
   if (!data || data.app !== 'gastos' || !Array.isArray(data.expenses)) throw new Error('This is not an Avocado Money backup file.');
-  await Promise.all(['expenses', 'income', 'goals', 'recurring', 'receipts'].map((s) => db.clear(s)));
+  await Promise.all(['expenses', 'income', 'goals', 'debts', 'recurring', 'receipts'].map((s) => db.clear(s)));
   await db.bulkPut('goals', data.goals || []);
+  await db.bulkPut('debts', data.debts || []);
   await db.put('meta', data.checkins || [], 'checkins');
   await db.put('meta', data.seenBadges || {}, 'seenBadges');
   await db.bulkPut('expenses', data.expenses.map(makeExpense));
@@ -384,7 +429,8 @@ export async function importAll(data) {
 }
 
 export async function eraseAll() {
-  await Promise.all(['expenses', 'income', 'goals', 'recurring', 'receipts', 'meta'].map((s) => db.clear(s)));
+  await Promise.all(['expenses', 'income', 'goals', 'debts', 'recurring', 'receipts', 'meta'].map((s) => db.clear(s)));
+  state.debts = [];
   state.expenses = [];
   state.income = [];
   state.goals = [];
@@ -397,7 +443,9 @@ export async function eraseAll() {
   emit();
 }
 
-export async function insertDemo(expenses, recurring, settingsPatch, income = [], goals = []) {
+export async function insertDemo(expenses, recurring, settingsPatch, income = [], goals = [], debts = []) {
+  for (const d of debts) { d.demo = true; d.createdAt = d.createdAt || Date.now(); state.debts.push(d); }
+  await db.bulkPut('debts', debts);
   for (const g of goals) {
     g.id = uid();
     g.demo = true;
@@ -432,6 +480,9 @@ export async function clearDemo() {
   const exIds = state.expenses.filter((e) => e.demo).map((e) => e.id);
   const recIds = state.recurring.filter((r) => r.demo).map((r) => r.id);
   const incIds = state.income.filter((e) => e.demo).map((e) => e.id);
+  const debtIds = state.debts.filter((d) => d.demo).map((d) => d.id);
+  state.debts = state.debts.filter((d) => !d.demo);
+  await db.bulkDel('debts', debtIds);
   const goalIds = state.goals.filter((g) => g.demo).map((g) => g.id);
   state.goals = state.goals.filter((g) => !g.demo);
   await db.bulkDel('goals', goalIds);
@@ -448,4 +499,4 @@ export async function clearDemo() {
   emit();
 }
 
-export const hasDemo = () => state.goals.some((g) => g.demo) || state.expenses.some((e) => e.demo) || state.income.some((e) => e.demo) || state.recurring.some((r) => r.demo);
+export const hasDemo = () => state.debts.some((d) => d.demo) || state.goals.some((g) => g.demo) || state.expenses.some((e) => e.demo) || state.income.some((e) => e.demo) || state.recurring.some((r) => r.demo);

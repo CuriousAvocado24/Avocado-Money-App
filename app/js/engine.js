@@ -3,6 +3,7 @@ import { state, savingsBalance, savingsIsSet } from './store.js';
 import { todayISO, addDays, monthKey, shiftMonthKey, daysInMonth, dayOfWeek, monthName } from './dates.js';
 import { sum, inMonth, lastDays, between, byCategory, byMerchant, monthStatus, fixedMonthly, activeRecurring, monthlyEquivalent, detectSubscriptions, effectiveIncome } from './analytics.js';
 import { goalPace } from './game.js';
+import { activeOwes, debtLeft, monthlyInterest, debtPlan, monthYear } from './debts.js';
 import { cat } from './categories.js';
 import { moneyRound as m, pct, plural } from './format.js';
 
@@ -42,7 +43,7 @@ export function buildInsights() {
     const scale = st.dim / st.dayNum;
     const cur = byCategory(st.list.filter((e) => !e.recurringId));
     for (const c of cur) {
-      if (['housing', 'bills', 'subscriptions', 'education', 'travel'].includes(c.id)) continue;
+      if (['housing', 'bills', 'subscriptions', 'education', 'travel', 'debt'].includes(c.id)) continue;
       const avg = prevMonths.reduce((a, k) => a + sum(inMonth(k).filter((e) => e.category === c.id && !e.recurringId)), 0) / prevMonths.length;
       const proj = c.total * scale;
       if (avg > 0 && proj > avg * 1.25 && proj - avg > Math.max(1000, total30 * 0.03)) {
@@ -196,7 +197,20 @@ export function buildInsights() {
     }
   }
 
-  // 15) No-spend days
+  // 15) Debt: interest is the most expensive "subscription" you have
+  const owing = activeOwes();
+  if (owing.length) {
+    const interest = monthlyInterest();
+    const plan = debtPlan('avalanche');
+    const top = [...owing].sort((a, b) => (Number(b.rate) || 0) - (Number(a.rate) || 0))[0];
+    if (interest > 0) {
+      out.push({ id: 'interest', emoji: '⚔️', tone: interest > 1000 ? 'warn' : 'tip', title: `Debt interest costs ${m(interest)}/month`,
+        body: `That's ${m(interest * 12)} a year for nothing. Put any spare money on ${top.name} first (${top.rate}%/month: the highest rate). ${plan.stuck ? 'One payment is too small to beat its interest; raise it.' : `Your plan clears everything by ${monthYear(plan.date)}.`} Cutting the tips above and redirecting them here is the fastest win.`,
+        save: Math.min(interest, debtLeft(top) * ((Number(top.rate) || 0) / 100)), action: { label: 'Open debts', href: '#/debts' } });
+    }
+  }
+
+  // 16) No-spend days
   const spentDays = new Set(st.list.filter((e) => !e.recurringId).map((e) => e.date));
   const noSpend = st.dayNum - spentDays.size;
   if (st.isCurrent && st.dayNum >= 7) {

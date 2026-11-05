@@ -3,6 +3,7 @@
 import { state, savingsBalance, savingsIsSet } from './store.js';
 import { todayISO, addDays, fromISO, toISO, monthKey, shiftMonthKey, diffDays } from './dates.js';
 import { moneyShort } from './format.js';
+import { owes, owedToMe, isCleared, debtLeft, debtTotal, debtPaid, activeOwes } from './debts.js';
 
 /* ---------------- Levels ---------------- */
 export const LEVELS = [
@@ -38,8 +39,9 @@ export function goalPace(g) {
 /* ---------------- Activity & streaks ---------------- */
 function activityByDay() {
   const days = new Map();
-  const get = (d) => { if (!days.has(d)) days.set(d, { exp: 0, inc: 0, check: false, dep: 0 }); return days.get(d); };
-  for (const e of state.expenses) if (!e.recurringId) get(e.date).exp++;
+  const get = (d) => { if (!days.has(d)) days.set(d, { exp: 0, inc: 0, check: false, dep: 0, debt: 0 }); return days.get(d); };
+  for (const e of state.expenses) if (!e.recurringId) { if (e.debtId) get(e.date).debt++; else get(e.date).exp++; }
+  for (const d of state.debts) for (const h of d.history || []) if (h.kind === 'collect') get(h.date).debt++;
   for (const i of state.income) if (!i.recurringId) get(i.date).inc++;
   for (const c of state.checkins) get(c).check = true;
   for (const g of state.goals) for (const h of g.history || []) if (h.amount > 0) get(h.date).dep++;
@@ -93,6 +95,10 @@ function questsFor(weekStart, days) {
   if (state.goals.length) pool.push({ id: 'dep2', emoji: '🌱', title: 'Add to a goal twice', target: 2, value: deposits, xp: 60 });
   else pool.push({ id: 'plant', emoji: '🌰', title: 'Plant your first goal', target: 1, value: state.goals.length, xp: 40 });
   pool.push({ id: 'receipt2', emoji: '🧾', title: 'Scan 2 receipts', target: 2, value: receipts, xp: 40 });
+  if (activeOwes().length) {
+    const debtPays = state.expenses.filter((e) => e.debtId && inWeek(e.date)).length;
+    pool.push({ id: 'debtpay', emoji: '⚔️', title: 'Hit a debt boss this week', target: 1, value: debtPays, xp: 50 });
+  }
   if (state.income.length) pool.push({ id: 'income', emoji: '💼', title: 'Log your income', target: 1, value: incomeLogs, xp: 30 });
 
   // Always "log 5 days", plus two more picked by the week so they rotate.
@@ -132,6 +138,13 @@ export const BADGES = [
   { id: 'sub-slayer', emoji: '✂️', name: 'Subscription slayer', desc: 'Pause a subscription you don’t need.' },
   { id: 'entries-100', emoji: '📚', name: '100 entries', desc: 'Log 100 expenses and incomes.' },
   { id: 'quests-5', emoji: '🗺️', name: 'Quest runner', desc: 'Complete 5 weekly quests.' },
+  { id: 'first-strike', emoji: '⚔️', name: 'First strike', desc: 'Make your first debt payment.' },
+  { id: 'halfway', emoji: '🌓', name: 'Halfway there', desc: 'Pay off half of any debt.' },
+  { id: 'boss-slayer', emoji: '🏆', name: 'Boss slayer', desc: 'Pay off a debt completely.' },
+  { id: 'triple-slayer', emoji: '🗡️', name: 'Triple slayer', desc: 'Pay off 3 debts.' },
+  { id: 'steady-payer', emoji: '📆', name: 'Steady payer', desc: 'Pay debts 3 months in a row.' },
+  { id: 'debt-free', emoji: '🕊️', name: 'Debt-free', desc: 'Clear every debt you owe.' },
+  { id: 'collector', emoji: '🤝', name: 'Collector', desc: 'Get money you lent paid back in full.' },
 ];
 
 function earnedBadges(ctx) {
@@ -158,6 +171,16 @@ function earnedBadges(ctx) {
   if (state.recurring.some((r) => r.kind === 'subscription' && !r.active)) e.add('sub-slayer');
   if (state.expenses.length + state.income.length >= 100) e.add('entries-100');
   if (ctx.questsDone >= 5) e.add('quests-5');
+  const debtPays = state.expenses.filter((x) => x.debtId);
+  if (debtPays.length) e.add('first-strike');
+  if (owes().some((d) => debtTotal(d) > 0 && debtPaid(d) >= debtTotal(d) / 2)) e.add('halfway');
+  const slain = owes().filter(isCleared).length;
+  if (slain >= 1) e.add('boss-slayer');
+  if (slain >= 3) e.add('triple-slayer');
+  if (owes().length && slain === owes().length) e.add('debt-free');
+  if (owedToMe().some(isCleared)) e.add('collector');
+  const payMonths = [...new Set(debtPays.map((x) => monthKey(x.date)))].sort();
+  for (let i = 2; i < payMonths.length; i++) if (shiftMonthKey(payMonths[i - 2], 2) === payMonths[i] && shiftMonthKey(payMonths[i - 1], 1) === payMonths[i]) { e.add('steady-payer'); break; }
   return e;
 }
 
@@ -170,9 +193,11 @@ export function gameState() {
   // XP from daily activity (capped per day so it rewards consistency, not spam)
   let xp = 0;
   for (const d of days.values()) {
-    xp += 10 + Math.min(d.exp, 6) * 5 + Math.min(d.inc, 3) * 10 + (d.check ? 15 : 0) + Math.min(d.dep, 3) * 20;
+    xp += 10 + Math.min(d.exp, 6) * 5 + Math.min(d.inc, 3) * 10 + (d.check ? 15 : 0) + Math.min(d.dep, 3) * 20 + Math.min(d.debt, 3) * 25;
   }
   xp += state.goals.filter((g) => g.completedAt || g.saved >= g.target).length * 250;
+  // Debt bosses defeated / loans collected
+  xp += owes().filter(isCleared).length * 300 + owedToMe().filter(isCleared).length * 100;
 
   // Weekly quests: this week + every past week since you started (max a year)
   const thisWeek = mondayOf(todayISO());

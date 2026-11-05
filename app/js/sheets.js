@@ -269,7 +269,7 @@ export function openSettings() {
           toast('Demo data removed');
         } else if (x === 'install') { close(); setTimeout(openInstallHelp, 220); }
         else if (x === 'erase') {
-          if (await confirmSheet({ title: 'Erase everything?', message: 'All expenses, income, goals, bills, receipts and settings on this phone will be deleted. This cannot be undone.', confirm: 'Erase all data', danger: true })) {
+          if (await confirmSheet({ title: 'Erase everything?', message: 'All expenses, income, goals, debts, bills, receipts and settings on this phone will be deleted. This cannot be undone.', confirm: 'Erase all data', danger: true })) {
             await eraseAll();
             close();
             toast('All data erased');
@@ -500,7 +500,7 @@ export async function loadDemo() {
   const d = makeDemo();
   const patch = !state.settings.monthlyBudget && !savingsIsSet() ? d.settings : null;
   for (const c of d.checkinDays) await checkIn(c, { silent: true });
-  await insertDemo(d.expenses, d.recurring, patch, d.income, d.goals);
+  await insertDemo(d.expenses, d.recurring, patch, d.income, d.goals, d.debts);
   toast('Demo data loaded — remove it any time in Settings');
   location.hash = '#/home';
 }

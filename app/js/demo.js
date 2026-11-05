@@ -97,6 +97,23 @@ export function makeDemo() {
     { name: 'Japan trip', emoji: '✈️', target: 60000, saved: 21500, deadline: addDays(today, 150), history: [{ date: addDays(today, -12), amount: 3000 }, { date: addDays(today, -3), amount: 2000 }] },
     { name: 'New phone', emoji: '📱', target: 45000, saved: 45000, deadline: '', completedAt: Date.now() - 86400000 * 9, history: [{ date: addDays(today, -9), amount: 6000 }] },
   ];
+  // Debts: a credit card, SPayLater, a loan from Tita, one already defeated, and money a friend owes you
+  const debts = [
+    { id: 'demo-debt-card', kind: 'owe', type: 'card', name: 'BPI credit card', original: 42000, rate: 3, minPay: 2100, plan: 6000, dueDay: 18, history: [] },
+    { id: 'demo-debt-bnpl', kind: 'owe', type: 'bnpl', name: 'SPayLater', original: 7200, rate: 0, minPay: 1200, plan: 1200, dueDay: 5, history: [] },
+    { id: 'demo-debt-tita', kind: 'owe', type: 'family', name: 'Tita Lorna', original: 15000, rate: 0, minPay: 0, plan: 2500, dueDay: 30, history: [] },
+    { id: 'demo-debt-phone', kind: 'owe', type: 'personal', name: 'Home Credit phone', original: 9000, rate: 2, minPay: 1500, plan: 3000, dueDay: 10, history: [] },
+    { id: 'demo-debt-mark', kind: 'owed', name: 'Mark', original: 3000, dueDate: addDays(today, 20), history: [{ kind: 'collect', amount: 1000, date: addDays(today, -6), at: 0 }] },
+  ];
+  const pay = (id, name, amount, date) => ex.push({ date, amount, category: 'debt', merchant: name, method: 'Bank transfer', debtId: id });
+  for (let k = 3; k >= 1; k--) {
+    const d = shiftMonthKey(curKey, -k);
+    pay('demo-debt-card', 'BPI credit card', 6000, `${d}-18`);
+    pay('demo-debt-bnpl', 'SPayLater', 1200, `${d}-05`);
+    pay('demo-debt-phone', 'Home Credit phone', 3000, `${d}-10`);
+    if (k <= 2) pay('demo-debt-tita', 'Tita Lorna', 2500, `${d}-28`);
+  }
+  pay('demo-debt-bnpl', 'SPayLater', 1200, `${curKey}-05`);
   const checkinDays = [addDays(today, -1), addDays(today, -4), addDays(today, -6)];
-  return { expenses: ex, recurring, income, goals, checkinDays, settings: { ...DEMO_SETTINGS, savingsStart: 38000, savingsStartDate: addDays(start, -1), savingsStartAt: 0 } };
+  return { expenses: ex, recurring, income, goals, debts, checkinDays, settings: { ...DEMO_SETTINGS, savingsStart: 38000, savingsStartDate: addDays(start, -1), savingsStartAt: 0 } };
 }

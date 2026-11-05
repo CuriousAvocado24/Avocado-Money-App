@@ -4,6 +4,7 @@ import { fmtShort, todayISO } from '../dates.js';
 import { money, moneyRound, esc, pct } from '../format.js';
 import { ICONS, toast, openSheet } from '../ui.js';
 import { gameState, goalStage, goalPace, LEVELS } from '../game.js';
+import { activeOwes, owes, isCleared, totalOwed, boss, debtPlan, monthYear } from '../debts.js';
 import { openGoalSheet, openDepositSheet, openSavingsSheet } from '../sheets.js';
 
 export function render(root) {
@@ -89,6 +90,13 @@ export function render(root) {
     ${levelCard}
     ${checkCard}
     ${questCard}
+    <div class="section-label">Debt bosses</div>
+    <a class="card debt-card" href="#/debts">
+      <span class="e">${activeOwes().length ? boss(debtPlan().order[0].debt).emoji : owes().length ? '🕊️' : '⚔️'}</span>
+      <span class="mid"><b>${activeOwes().length ? `${activeOwes().length} to beat · ${moneyRound(totalOwed())}` : owes().length ? 'All bosses defeated' : 'Battle your debts'}</b>
+        <small>${activeOwes().length ? `${owes().filter(isCleared).length} defeated · debt-free by ${esc(monthYear(debtPlan().date)) || '—'}` : 'Credit cards, loans, utang: +300 XP for each one you beat'}</small></span>
+      <span class="btn small primary">Open</span>
+    </a>
     <div class="section-label">Goals</div>
     ${goals.length ? goalCards : `<div class="card empty"><div class="big">🌰</div><h2>Plant your first <em>goal</em></h2><p>Emergency fund, a trip, a new phone… Every peso you add helps it grow from a seed into an avocado tree.</p><div class="btns"><button class="btn primary" data-new>Plant a goal</button></div></div>`}
     ${savingsIsSet() && goals.length ? `<p class="muted" style="font-size:13px;margin:-4px 4px 14px">In goals: ${moneyRound(allocated)} of your ${moneyRound(savingsBalance())} savings. <button data-savings style="color:var(--accent);font-weight:600">Update savings</button></p>` : ''}
@@ -98,6 +106,7 @@ export function render(root) {
     <div class="card tip-list" style="font-size:14px">
       <div class="tip"><h3>Log every day</h3><p>+10 XP per active day, +5 per expense (up to 6 a day), +10 per income.</p></div>
       <div class="tip"><h3>Feed your goals</h3><p>+20 XP per deposit (up to 3 a day), +250 XP when a goal is fully funded.</p></div>
+      <div class="tip"><h3>Beat your debts</h3><p>+25 XP per debt payment, +300 XP per boss defeated, +100 XP when a loan you gave is paid back.</p></div>
       <div class="tip"><h3>Quests and badges</h3><p>Weekly quests give 30–80 XP each. Every badge is +50 XP.</p></div>
     </div>`;
 

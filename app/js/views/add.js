@@ -182,6 +182,7 @@ async function save() {
   }
   const category = draft.category || guessCategory(draft.merchant) || 'other';
   const e = await addExpense({ amount: n, merchant: draft.merchant, category, date: draft.date, method: draft.method, receiptId: draft.receiptId });
+  if (category === 'debt' && state.debts.length) import('./debts.js').then((m) => m.linkDebtPayment(e));
   const c = cat(category);
   draft = fresh();
   render(el);

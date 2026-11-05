@@ -17,6 +17,7 @@ export const CATEGORIES = [
   { id: 'entertainment', name: 'Entertainment', short: 'Fun', emoji: '🎬', group: 'wants' },
   { id: 'education', name: 'Education', short: 'School', emoji: '📚', group: 'needs' },
   { id: 'travel', name: 'Travel', short: 'Travel', emoji: '✈️', group: 'wants' },
+  { id: 'debt', name: 'Debt payments', short: 'Debt', emoji: '💸', group: 'needs' },
   { id: 'gifts', name: 'Gifts & Donations', short: 'Gifts', emoji: '🎁', group: 'wants' },
   { id: 'other', name: 'Other', short: 'Other', emoji: '📦', group: 'wants' },
 ];
@@ -181,6 +182,7 @@ const MERCHANTS = [
   ['Booking.com', 'travel', ['booking com']],
   ['Airbnb', 'travel', ['airbnb']],
   ['Hotel', 'travel', ['hotel', 'resort', 'klook']],
+  ['Credit card payment', 'debt', ['credit card payment', 'card payment', 'loan payment', 'loan', 'utang', 'spaylater', 'ggives', 'gloan', 'home credit', 'billease', 'atome', 'amortization payment']],
   ['Rent', 'housing', ['rent', 'condo', 'apartment', 'association dues', 'hoa', 'amortization', 'pag ibig housing']],
   ['Tuition', 'education', ['tuition', 'school', 'university', 'college', 'udemy', 'coursera']],
   ['Restaurant', 'food', ['restaurant', 'resto', 'carinderia', 'kainan', 'grill', 'lechon', 'bbq', 'pizza', 'burger', 'ramen', 'sushi', 'lunch', 'dinner', 'breakfast', 'merienda']],
