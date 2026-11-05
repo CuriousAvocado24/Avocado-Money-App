@@ -16,6 +16,10 @@ export const DEFAULT_SETTINGS = {
   savingsStartAt: 0,
   savingsGoal: 0,
   savingsGoalName: '',
+  // Nightly "did you spend anything?" check-in
+  nightCheck: true,
+  nightCheckTime: '20:00',
+  nightAnswered: [],
 };
 
 export const state = {

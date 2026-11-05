@@ -201,6 +201,13 @@ export function openSettings() {
       <button class="btn block" data-suggest>Suggest a budget for me</button>
       <button class="btn block" data-catbudgets>Category budgets ›</button>
       <label>Currency<select class="field" data-f="currency">${CURRENCIES.map(([c, n]) => `<option value="${c}" ${c === st.currency ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+      <div class="section-label">Nightly check-in</div>
+      <div class="toggle-row"><span class="lbl">Ask "Did you spend anything today?"<small>A full-screen check-in at this time. Missed it? It asks about yesterday the next morning.</small></span>
+        <label class="switch"><input type="checkbox" data-f="nightCheck" ${st.nightCheck !== false ? 'checked' : ''}><span></span></label></div>
+      <div class="row2"><label>Time<input class="field" type="time" data-f="nightCheckTime" value="${st.nightCheckTime || '20:00'}"></label>
+        <label>&nbsp;<button class="btn" data-preview type="button" style="width:100%">Preview it</button></label></div>
+      <p class="muted" style="font-size:12.5px">iPhone web apps can't buzz your phone on their own. For an alert, add a daily iPhone Reminder ("Check in on Avocado Money", 8 PM) or a Shortcuts automation that shows a notification. Opening the app then shows the check-in.</p>
+      <div class="section-label">App</div>
       <label>When I open the app, show<select class="field" data-f="openTo"><option value="add" ${st.openTo === 'add' ? 'selected' : ''}>Quick add (fastest)</option><option value="home" ${st.openTo === 'home' ? 'selected' : ''}>Dashboard</option></select></label>
       <button class="btn primary block" data-save>Save</button>
 
@@ -219,7 +226,7 @@ export function openSettings() {
     onMount: (s, close) => {
       const f = (k) => s.querySelector(`[data-f="${k}"]`);
       s.querySelector('[data-save]').onclick = async () => {
-        await saveSettings({ monthlyIncome: num(f('monthlyIncome').value), monthlyBudget: num(f('monthlyBudget').value), currency: f('currency').value, openTo: f('openTo').value, demoSettings: false });
+        await saveSettings({ monthlyIncome: num(f('monthlyIncome').value), monthlyBudget: num(f('monthlyBudget').value), currency: f('currency').value, openTo: f('openTo').value, nightCheck: f('nightCheck').checked, nightCheckTime: f('nightCheckTime').value || '20:00', demoSettings: false });
         close();
         toast('Settings saved');
       };
@@ -232,6 +239,7 @@ export function openSettings() {
       };
       s.querySelector('[data-catbudgets]').onclick = () => { close(); setTimeout(openCategoryBudgets, 220); };
       s.querySelector('[data-savings]').onclick = () => { close(); setTimeout(openSavingsSheet, 220); };
+      s.querySelector('[data-preview]').onclick = async () => { close(); const m = await import('./nightly.js'); setTimeout(m.previewNightly, 300); };
       const restoreInput = s.querySelector('[data-restore]');
       restoreInput.onchange = async () => {
         const file = restoreInput.files[0];

@@ -449,6 +449,29 @@ em, .lit { font-family: var(--font-head); font-style: italic; font-weight: 500; 
 .savings-card .row-btns .btn { flex: 1; height: 40px; font-size: 15px; }
 .savings-card .avo { position: absolute; right: -12px; top: -14px; font-size: 92px; opacity: 0.18; transform: rotate(-14deg); pointer-events: none; }
 
+/* ===== Nightly check-in (always the dark "Study" room) ===== */
+.night {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center;
+  background: radial-gradient(120% 80% at 50% 0%, #2E3A1D 0%, #1B2312 55%, #151C0E 100%);
+  color: #F5F2E3; opacity: 0; transition: opacity 0.3s;
+  padding: calc(var(--safe-t) + 24px) 24px calc(var(--safe-b) + 24px);
+}
+.night.show { opacity: 1; }
+.night-inner { width: 100%; max-width: 420px; text-align: center; transform: translateY(16px); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.night.show .night-inner { transform: none; }
+.night-avo { font-size: 84px; line-height: 1; filter: drop-shadow(0 10px 30px rgba(212, 222, 110, 0.25)); animation: bob 3s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-6px) rotate(-4deg); } }
+.night-eyebrow { margin-top: 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #A8C85A; }
+.night h1 { font-family: var(--font-head); font-weight: 500; font-size: 36px; line-height: 1.12; margin: 10px 0 12px; color: #F5F2E3; }
+.night h1 em { color: #D4DE6E; text-shadow: 0 0 18px rgba(212, 222, 110, 0.35); }
+.night-sub { color: #D6D6C2; font-size: 16px; line-height: 1.45; margin-bottom: 28px; }
+.night-btns { display: grid; gap: 10px; }
+.night .btn.primary { background: #A8C85A; color: #1B2312; height: 54px; font-size: 17px; }
+.night .btn.ghost { background: rgba(245, 242, 227, 0.1); color: #F5F2E3; height: 50px; }
+.night-xp { font-size: 12.5px; font-weight: 800; background: rgba(27, 35, 18, 0.15); padding: 2px 8px; border-radius: 8px; margin-left: 4px; }
+.night-later { color: #9A9C85; font-size: 15px; font-weight: 600; padding: 12px; }
+@media (prefers-reduced-motion: reduce) { .night-avo { animation: none; } }
+
 /* ===== Debt bosses ===== */
 .hp { position: relative; height: 18px; border-radius: 9px; background: var(--track); margin: 14px 0 8px; overflow: hidden; }
 .hp > i { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--critical), #F2A27A); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }

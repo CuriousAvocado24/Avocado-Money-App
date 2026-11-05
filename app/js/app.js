@@ -10,6 +10,7 @@ import * as insights from './views/insights.js';
 import * as goals from './views/goals.js';
 import * as debts from './views/debts.js';
 import { openInstallHelp } from './sheets.js';
+import { startNightly } from './nightly.js';
 
 const VIEWS = { add, home, activity, bills, insights, goals, debts };
 const view = document.getElementById('view');
@@ -91,6 +92,8 @@ async function start() {
   });
 
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  startNightly();
 
   if (isIOS() && !isStandalone() && !state.settings.installHintShown) setTimeout(openInstallHelp, 800);
 
