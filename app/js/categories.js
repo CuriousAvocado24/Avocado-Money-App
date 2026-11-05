@@ -23,6 +23,32 @@ export const CATEGORIES = [
 const BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
 export const cat = (id) => BY_ID[id] || BY_ID.other;
 
+export const INCOME_SOURCES = [
+  { id: 'salary', name: 'Salary', short: 'Salary', emoji: '💼' },
+  { id: 'freelance', name: 'Freelance / Side gig', short: 'Freelance', emoji: '💻' },
+  { id: 'business', name: 'Business', short: 'Business', emoji: '🏪' },
+  { id: 'bonus', name: 'Bonus / 13th month', short: 'Bonus', emoji: '🎉' },
+  { id: 'allowance', name: 'Allowance / Padala', short: 'Allowance', emoji: '👛' },
+  { id: 'interest', name: 'Interest & dividends', short: 'Interest', emoji: '📈' },
+  { id: 'refund', name: 'Refund / Cashback', short: 'Refund', emoji: '↩️' },
+  { id: 'gift', name: 'Gift', short: 'Gift', emoji: '🎁' },
+  { id: 'otherIncome', name: 'Other income', short: 'Other', emoji: '💰' },
+];
+const SRC_BY_ID = Object.fromEntries(INCOME_SOURCES.map((c) => [c.id, c]));
+export const src = (id) => SRC_BY_ID[id] || SRC_BY_ID.otherIncome;
+export function guessSource(text) {
+  const t = (text || '').toLowerCase();
+  if (/salary|payroll|sweldo|sahod|kinsenas|payday/.test(t)) return 'salary';
+  if (/freelance|upwork|fiverr|onlinejobs|client|project|commission|sideline|raket/.test(t)) return 'freelance';
+  if (/bonus|13th|incentive/.test(t)) return 'bonus';
+  if (/refund|cashback|rebate|reimburse/.test(t)) return 'refund';
+  if (/padala|allowance|baon/.test(t)) return 'allowance';
+  if (/interest|dividend|mp2|stock|crypto/.test(t)) return 'interest';
+  if (/sale|sales|business|store|shop|order/.test(t)) return 'business';
+  if (/gift|regalo|birthday|pamasko/.test(t)) return 'gift';
+  return null;
+}
+
 export const METHODS = [
   { id: 'Cash', emoji: '💵' },
   { id: 'GCash', emoji: '📱' },

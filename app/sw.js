@@ -1,5 +1,5 @@
-// Offline support: the app shell is cached on first visit; the receipt reader is cached the first time you scan.
-const VERSION = 'gastos-v1';
+// Offline support: the app shell is cached on first visit; fonts and the receipt reader are cached the first time they load.
+const VERSION = 'avocado-v2';
 const SHELL = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const SHELL = [
   './js/demo.js',
   './js/engine.js',
   './js/format.js',
+  './js/game.js',
   './js/receipt.js',
   './js/sheets.js',
   './js/store.js',
@@ -21,14 +22,15 @@ const SHELL = [
   './js/views/activity.js',
   './js/views/add.js',
   './js/views/bills.js',
+  './js/views/goals.js',
   './js/views/home.js',
   './js/views/insights.js',
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
-const RUNTIME = 'gastos-runtime-v1';
-const CDN = /^https:\/\/(cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com)\//;
+const RUNTIME = 'avocado-runtime-v1';
+const CDN = /^https:\/\/(cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

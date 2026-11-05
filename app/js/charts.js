@@ -86,3 +86,59 @@ export function columnChart(container, data, opts = {}) {
   svgEl.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
   svgEl.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') { clearTimeout(timer); timer = setTimeout(hide, 2200); } });
 }
+
+/**
+ * Grouped columns: two or more series per period (e.g. income vs. spending).
+ * data: [{ label, tip, values: [a, b] }]; series: [{ name, color }]
+ */
+export function groupedChart(container, data, opts = {}) {
+  const { height = 170, format = String, axisFormat = String, series = [] } = opts;
+  const W = Math.max(240, container.clientWidth || 320);
+  const H = height;
+  const padT = 8, padB = 22, padR = 40;
+  const plotW = W - padR;
+  const plotH = H - padT - padB;
+  const max = niceMax(Math.max(1, ...data.flatMap((d) => d.values)));
+  const y = (v) => padT + plotH - (v / max) * plotH;
+  const band = plotW / data.length;
+  const n = series.length;
+  const bw = Math.max(3, Math.min(18, (band - 10 - (n - 1) * 2) / n));
+  const groupW = n * bw + (n - 1) * 2;
+
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || 'Chart')}">`;
+  svg += '<g class="grid">' + [max / 2, max].map((t) => `<line x1="0" x2="${plotW}" y1="${y(t)}" y2="${y(t)}"/>`).join('') + '</g>';
+  svg += [0, max / 2, max].map((t) => `<text class="tick" x="${W - 2}" y="${y(t) + 4}" text-anchor="end">${esc(axisFormat(t))}</text>`).join('');
+  data.forEach((d, i) => {
+    const x0 = i * band + (band - groupW) / 2;
+    d.values.forEach((v, j) => {
+      const h = (v / max) * plotH;
+      svg += `<path class="gbar" data-i="${i}" style="fill:${series[j].color}" d="${colPath(x0 + j * (bw + 2), y(v), bw, h)}"/>`;
+    });
+    svg += `<text class="tick" x="${i * band + band / 2}" y="${H - 6}" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+  svg += `<line class="baseline" x1="0" x2="${plotW}" y1="${y(0)}" y2="${y(0)}"/></svg>`;
+
+  container.classList.add('chart');
+  container.innerHTML = svg + '<div class="chart-tip"></div>';
+  const tip = container.querySelector('.chart-tip');
+  const svgEl = container.querySelector('svg');
+  const bars = [...container.querySelectorAll('.gbar')];
+  let timer = null;
+  const show = (clientX) => {
+    const rect = svgEl.getBoundingClientRect();
+    const i = Math.floor((clientX - rect.left) / band);
+    if (i < 0 || i >= data.length) return hide();
+    const d = data[i];
+    bars.forEach((b) => (b.style.opacity = +b.dataset.i === i ? 1 : 0.4));
+    tip.innerHTML = `${esc(d.tip || d.label)}<br>` + series.map((s, j) => `${esc(s.name)} <b>${esc(format(d.values[j]))}</b>`).join('<br>') + (d.extra ? `<br>${esc(d.extra)}` : '');
+    const half = tip.offsetWidth / 2;
+    tip.style.left = Math.min(Math.max(i * band + band / 2, half), W - half) + 'px';
+    tip.style.top = '-8px';
+    tip.classList.add('show');
+  };
+  const hide = () => { bars.forEach((b) => (b.style.opacity = 1)); tip.classList.remove('show'); };
+  svgEl.addEventListener('pointerdown', (e) => { clearTimeout(timer); show(e.clientX); });
+  svgEl.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || e.buttons) show(e.clientX); });
+  svgEl.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
+  svgEl.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') { clearTimeout(timer); timer = setTimeout(hide, 2500); } });
+}

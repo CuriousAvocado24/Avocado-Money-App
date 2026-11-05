@@ -1,7 +1,8 @@
 // On-device "what to cut" engine. Pure rules on your own data — nothing leaves the phone.
-import { state } from './store.js';
+import { state, savingsBalance, savingsIsSet } from './store.js';
 import { todayISO, addDays, monthKey, shiftMonthKey, daysInMonth, dayOfWeek, monthName } from './dates.js';
-import { sum, inMonth, lastDays, between, byCategory, byMerchant, monthStatus, fixedMonthly, activeRecurring, monthlyEquivalent, detectSubscriptions } from './analytics.js';
+import { sum, inMonth, lastDays, between, byCategory, byMerchant, monthStatus, fixedMonthly, activeRecurring, monthlyEquivalent, detectSubscriptions, effectiveIncome } from './analytics.js';
+import { goalPace } from './game.js';
 import { cat } from './categories.js';
 import { moneyRound as m, pct, plural } from './format.js';
 
@@ -12,7 +13,7 @@ export function buildInsights() {
   const today = todayISO();
   const curKey = monthKey(today);
   const st = monthStatus(curKey);
-  const income = Number(state.settings.monthlyIncome) || 0;
+  const income = effectiveIncome(curKey);
   const last30 = lastDays(30);
   const prev30 = between(addDays(today, -59), addDays(today, -30));
   const total30 = sum(last30);
@@ -136,7 +137,7 @@ export function buildInsights() {
     if (saved < income * 0.2) {
       out.push({ id: 'savings', emoji: '🐷', tone: saved < 0 ? 'bad' : 'warn', title: saved < 0 ? 'Spending more than you earn' : `Saving ${pct(Math.max(0, saved) / income)} of income`,
         body: saved < 0
-          ? `You're on track to spend ${m(-saved)} more than your income this month. Start with the biggest category above and set a budget for it.`
+          ? `You're on track to spend ${m(-saved)} more than you earn this month. Start with the biggest category above and set a budget for it.`
           : `Aim for 20% (${m(income * 0.2)}/month). Pay yourself first: on payday, move savings to a separate account (e.g. a digital bank or GSave/Maya Savings) before spending.`, save: 0 });
     } else {
       out.push({ id: 'savings-ok', emoji: '🌱', tone: 'good', title: `You're saving about ${pct(saved / income)} of income`,
@@ -166,7 +167,36 @@ export function buildInsights() {
     }
   }
 
-  // 13) No-spend days
+  // 13) Emergency fund coverage (savings ÷ typical monthly spending)
+  if (savingsIsSet()) {
+    const months = prevMonths.length ? prevMonths.reduce((a, k) => a + sum(inMonth(k)), 0) / prevMonths.length : total30;
+    const bal = savingsBalance();
+    if (months > 0) {
+      const cover = bal / months;
+      if (cover < 3) {
+        out.push({ id: 'efund', emoji: '🛟', tone: bal < 0 ? 'bad' : 'warn', title: bal < 0 ? 'Your savings are below zero' : `Savings cover ${cover.toFixed(1)} months of spending`,
+          body: bal < 0 ? 'You have spent more than you saved and earned since you set your balance. Check the number is right (tap it on Home), then aim to get back above zero first.' : `A safety net of 3–6 months (${m(months * 3)}–${m(months * 6)}) protects you from job loss or emergencies. Plant an "Emergency fund" goal and feed it on every payday.`, save: 0, action: { label: 'Open goals', href: '#/goals' } });
+      } else {
+        out.push({ id: 'efund-ok', emoji: '🛟', tone: 'good', title: `Savings cover ${cover.toFixed(1)} months`,
+          body: cover >= 6 ? 'That is a full emergency fund. Money beyond this can work harder: think Pag-IBIG MP2, time deposits or index funds.' : 'You have a basic safety net. Keep going toward 6 months.', save: 0 });
+      }
+    }
+  }
+
+  // 14) Goals falling behind their target date
+  for (const g of state.goals) {
+    const p = goalPace(g);
+    if (!p) continue;
+    const hist = (g.history || []).filter((h) => h.date >= addDays(today, -60));
+    const rate = hist.reduce((a, h) => a + h.amount, 0) / 2; // per month, last 60 days
+    if (p.overdue) {
+      out.push({ id: 'goal-late-' + g.id, emoji: g.emoji || '🎯', tone: 'warn', title: `${g.name} passed its target date`, body: `${m(g.target - g.saved)} still to go. Pick a new date so you know how much to set aside each month.`, save: 0, action: { label: 'Open goals', href: '#/goals' } });
+    } else if (rate < p.perMonth * 0.8) {
+      out.push({ id: 'goal-pace-' + g.id, emoji: g.emoji || '🎯', tone: 'info', title: `${g.name} needs ${m(p.perMonth)}/month`, body: `You've been adding about ${m(rate)} a month. Move a little of the savings tips above into this goal to hit it on time.`, save: 0, action: { label: 'Feed goal', href: '#/goals' } });
+    }
+  }
+
+  // 15) No-spend days
   const spentDays = new Set(st.list.filter((e) => !e.recurringId).map((e) => e.date));
   const noSpend = st.dayNum - spentDays.size;
   if (st.isCurrent && st.dayNum >= 7) {

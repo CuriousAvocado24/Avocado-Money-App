@@ -1,19 +1,26 @@
 import { state, load, subscribe, processRecurring } from './store.js';
 import { todayISO } from './dates.js';
-import { isIOS, isStandalone, toast } from './ui.js';
+import { isIOS, isStandalone, toast, xpPop, celebrate } from './ui.js';
+import { gameState } from './game.js';
 import * as add from './views/add.js';
 import * as home from './views/home.js';
 import * as activity from './views/activity.js';
 import * as bills from './views/bills.js';
 import * as insights from './views/insights.js';
+import * as goals from './views/goals.js';
 import { openInstallHelp } from './sheets.js';
 
-const VIEWS = { add, home, activity, bills, insights };
+const VIEWS = { add, home, activity, bills, insights, goals };
 const view = document.getElementById('view');
 let current = null;
 let lastDay = todayISO();
 
 function route() {
+  if (location.hash === '#/add/income' || location.hash === '#/add/expense') {
+    add.setMode(location.hash.endsWith('income') ? 'income' : 'expense');
+    location.replace('#/add');
+    return;
+  }
   const name = (location.hash.match(/^#\/(\w+)/) || [])[1];
   if (!VIEWS[name]) {
     location.replace('#/' + (state.settings.openTo === 'home' ? 'home' : 'add'));
@@ -41,11 +48,27 @@ async function start() {
     await load();
   } catch (e) {
     console.error(e);
-    view.innerHTML = '<div class="card empty"><div class="big">⚠️</div><h2>Storage unavailable</h2><p>Gastos needs on-device storage. If you are in Private Browsing, switch to a normal tab.</p></div>';
+    view.innerHTML = '<div class="card empty"><div class="big">⚠️</div><h2>Storage unavailable</h2><p>Avocado Money needs on-device storage. If you are in Private Browsing, switch to a normal tab.</p></div>';
     return;
   }
   await processRecurring({ silent: true });
-  subscribe(rerender);
+  let last = gameState();
+  subscribe(() => {
+    rerender();
+    // Game feedback: XP pops, level-ups and new badges
+    const now = gameState();
+    const gained = now.xp - last.xp;
+    const newBadges = now.badges.filter((b) => b.earned && !b.seen && !last.badges.find((x) => x.id === b.id).earned);
+    const busy = !!document.querySelector('.sheet-wrap');
+    if (gained > 0 && gained <= 600 && busy) {
+      xpPop(now.level.level > last.level.level ? `Level ${now.level.level}: ${now.level.name} 🥑` : newBadges.length ? `${newBadges[0].emoji} ${newBadges[0].name} unlocked` : `+${gained} XP 🥑`);
+    } else if (gained > 0 && gained <= 600) {
+      if (now.level.level > last.level.level) celebrate({ emoji: '🥑', title: `Level ${now.level.level}: <em>${now.level.name}</em>`, text: `You leveled up. ${now.level.need - now.level.into} XP to the next level.` });
+      else if (newBadges.length) celebrate({ emoji: newBadges[0].emoji, title: `Badge <em>unlocked</em>`, text: `${newBadges[0].name}: ${newBadges[0].desc} +50 XP.` });
+      else xpPop(`+${gained} XP 🥑`);
+    }
+    last = now;
+  });
   window.addEventListener('hashchange', route);
   route();
 

@@ -1,6 +1,6 @@
 // Tiny IndexedDB wrapper. Everything stays on this device.
 const DB_NAME = 'gastos';
-const VERSION = 1;
+const VERSION = 3;
 let dbp = null;
 
 function open() {
@@ -9,7 +9,7 @@ function open() {
       const req = indexedDB.open(DB_NAME, VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
-        for (const s of ['expenses', 'recurring', 'receipts']) {
+        for (const s of ['expenses', 'recurring', 'receipts', 'income', 'goals']) {
           if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');

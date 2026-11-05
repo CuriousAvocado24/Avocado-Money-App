@@ -6,9 +6,9 @@ import { openSettings } from '../sheets.js';
 
 export function render(root) {
   const { insights, totalSave, ready } = buildInsights();
-  let html = `<div class="page-head"><h1>Insights</h1></div>`;
+  let html = `<div class="page-head"><h1>Where to <em>cut</em></h1></div>`;
   if (!ready) {
-    html += `<div class="card empty"><div class="big">💡</div><h2>Insights are warming up</h2><p>Log at least a few days of expenses and Gastos will spot patterns and tell you exactly where to cut.</p><div class="btns"><a class="btn primary" href="#/add">Add an expense</a></div></div>`;
+    html += `<div class="card empty"><div class="big">💡</div><h2>Insights are <em>warming up</em></h2><p>Log at least a few days of expenses and Avocado Money will spot patterns and tell you exactly where to cut.</p><div class="btns"><a class="btn primary" href="#/add">Add an expense</a></div></div>`;
   } else {
     html += `<div class="card">
       <div class="hero-label">You could free up</div>
@@ -26,7 +26,7 @@ export function render(root) {
         </div>
       </div>`).join('');
     if (!insights.some((i) => i.id.startsWith('pace') || i.id === 'over')) {
-      html += `<div class="card insight"><span class="e">🎯</span><div><h3>Set a monthly budget</h3><p>With a budget, Gastos tells you how much is safe to spend each day and warns you before you overspend.</p><div class="actions"><button class="btn small" data-settings>Set budget</button></div></div></div>`;
+      html += `<div class="card insight"><span class="e">🎯</span><div><h3>Set a monthly budget</h3><p>With a budget, Avocado Money tells you how much is safe to spend each day and warns you before you overspend.</p><div class="actions"><button class="btn small" data-settings>Set budget</button></div></div></div>`;
     }
   }
   html += `<div class="section-label">Money basics</div><div class="card tip-list">${MONEY_TIPS.map(([t, b]) => `<div class="tip"><h3>${esc(t)}</h3><p>${esc(b)}</p></div>`).join('')}</div>

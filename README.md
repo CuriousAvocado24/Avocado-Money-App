@@ -1,22 +1,23 @@
-# Gastos — expense tracker for iPhone
+# Avocado Money
 
-A fast, private expense tracker that installs on your iPhone Home Screen and works offline.
-Everything is stored **only on your phone**. There are no accounts, no servers and no bank logins.
+Grow your savings like an avocado tree. It's a private, offline expense and income tracker for iPhone, turned into a game and styled with the Lloyd Bolivar avocado brand (Fraunces + Plus Jakarta Sans, Paper and Study rooms).
+Everything is stored **only on your phone**. There are no accounts, no servers and no bank logins: you enter the numbers yourself.
 
 ## What it does
 
 | Screen | What you get |
 |---|---|
-| **Quick Add** (opens first) | Type the amount on the keypad, tap a category, and tap Save. It takes about 3 seconds. Gastos learns your merchants, so "Jollibee" files itself under Food. |
-| **📷 Scan receipt** | Take a photo or pick one from your library. On-device text recognition fills in the total, store and date, and the photo is saved with the expense. |
-| **📋 Paste SMS** | Paste a GCash, Maya, bank or card notification and it pulls out the amount, merchant and payment method. |
-| **Home (dashboard)** | Spent this month vs. budget with a pace marker, safe-to-spend per day, comparison with last month, fixed costs, bills due, daily spending chart, where it went (by category), needs vs. wants (50/30/20), a 6-month trend, top places and what's coming up. |
-| **Activity** | Every expense, searchable and filterable. Tap one to edit it, view its receipt or delete it (with undo). |
-| **Bills & subs** | Subscriptions and bills with their yearly cost, auto-logging on the due date, a **Pay** button for bills that vary, and detection of repeating charges you haven't tracked yet. |
-| **Insights** | Suggestions on what to cut, ranked by how much they'd save: category spikes, eating out, coffee habits, subscription overload, streaming rotation, gas, impulse shopping, weekend splurges, fees, the 50/30/20 check, savings rate and no-spend days. |
-| **Settings** (⚙ on Home) | Income, budget, category budgets, currency (₱ by default), CSV export, full backup and restore, and demo data. |
+| **Quick Add** (opens first) | Switch between **− Expense** and **+ Income**. Type the amount, tap a category, Save. Expenses can also be filled from a **📷 receipt photo** or a **📋 pasted GCash/bank SMS**. |
+| **Home** | **Your savings**: the amount you set, plus income you log, minus spending (tap the number to correct it). Also this month's money in, out and net, your level and streak, spending vs. budget, safe-to-spend per day, income vs. spending by month, daily spending, where it went, needs vs. wants (50/30/20), what's coming up and top places. |
+| **Goals** (the game) | Goals grow from 🌰 seed → 🌱 → 🌿 → 🪴 → 🌳 → 🥑 harvest as you feed them. **XP and levels** (Seed up to Avocado legend), **daily streaks** with no-spend check-ins, **3 weekly quests**, and **15 badges**. |
+| **Activity** | Every expense and income, searchable and filterable. Tap one to edit or delete it (with undo). |
+| **Bills & paydays** (from Home tiles) | Subscriptions, bills and **recurring income** (for example salary on the 15th and 30th), logged automatically on their dates. It also spots repeating charges you haven't tracked yet. |
+| **Where to cut** (Insights) | Ranked savings tips: spending spikes, eating out, coffee, subscriptions, gas, shopping, weekend spending, fees, the 50/30/20 check, emergency-fund coverage, and goals falling behind their date. |
+| **Settings** (⚙ on Home) | Update savings, budget, category budgets, currency (₱ by default), CSV export, backup and restore, and demo data. |
 
-Tip: open Home → ⚙ → **Load demo data** to see every chart filled in. You can remove it from the same menu.
+**How XP works:** +10 per day you log anything, +5 per expense (up to 6 a day), +10 per income, +15 for a no-spend check-in, +20 per goal deposit (up to 3 a day), +250 for a fully funded goal, 30–80 per weekly quest and +50 per badge. Level 2 takes about 4 days; level 10 takes about a year of daily logging.
+
+Tip: open Home → ⚙ → **Load demo data** to see everything filled in. You can remove it from the same menu.
 
 ## Install it on your iPhone
 
@@ -45,9 +46,9 @@ Then on an iPhone that's on the same Wi-Fi, open `http://<your-PC's-IP>:8765` in
 
 ## About the "widget"
 
-Apple only lets apps built in Xcode on a Mac put real widgets on the Home Screen. Gastos gets you almost the same thing:
+Apple only lets apps built in Xcode on a Mac put real widgets on the Home Screen. Avocado Money gets you almost the same thing:
 
-- **Put the Gastos icon in your Dock.** It opens straight to Quick Add with the keypad ready.
+- **Put the Avocado Money icon in your Dock.** It opens straight to Quick Add with the keypad ready.
 - The camera button is in the top-right corner, so a receipt is one tap away.
 
 If you later get access to a Mac, the app can be wrapped as a native app with a real WidgetKit widget, and the logic here carries over.

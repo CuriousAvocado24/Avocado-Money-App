@@ -1,13 +1,15 @@
 // Shared edit sheets: expense, subscription/bill, settings, install help.
-import { state, updateExpense, deleteExpense, restoreExpense, getReceipt, saveRecurring, deleteRecurring, markPaid, saveSettings, exportAll, importAll, eraseAll, clearDemo, hasDemo, insertDemo } from './store.js';
+import { state, updateExpense, deleteExpense, restoreExpense, getReceipt, saveRecurring, deleteRecurring, markPaid, saveSettings, exportAll, importAll, eraseAll, clearDemo, hasDemo, insertDemo, updateIncome, deleteIncome, restoreIncome, savingsBalance, savingsIsSet, setSavingsBalance, saveGoal, depositGoal, deleteGoal, checkIn } from './store.js';
 import { todayISO, addDays, addMonths, fmtShort, inDays } from './dates.js';
-import { CATEGORIES, METHODS, cat, guessCategory } from './categories.js';
+import { CATEGORIES, METHODS, INCOME_SOURCES, cat, src, guessCategory, guessSource } from './categories.js';
 import { money, esc, CURRENCIES } from './format.js';
-import { openSheet, confirmSheet, toast, saveFile, isStandalone } from './ui.js';
+import { openSheet, confirmSheet, toast, saveFile, isStandalone, celebrate } from './ui.js';
+import { goalStage, goalPace } from './game.js';
 import { monthlyEquivalent } from './analytics.js';
 import { makeDemo, DEMO_SETTINGS } from './demo.js';
 
 const catOptions = (sel) => CATEGORIES.map((c) => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${c.emoji} ${esc(c.name)}</option>`).join('');
+const srcOptions = (sel) => INCOME_SOURCES.map((c) => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${c.emoji} ${esc(c.name)}</option>`).join('');
 const methodOptions = (sel) => METHODS.map((m) => `<option ${m.id === sel ? 'selected' : ''}>${esc(m.id)}</option>`).join('');
 const num = (v) => { const n = parseFloat(String(v).replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
 
@@ -53,6 +55,8 @@ export function openExpenseSheet(e) {
 
 /* ---------------- Subscriptions & bills ---------------- */
 export const PRESETS = [
+  ['Salary', 'salary', 'income', '💼'],
+  ['Freelance', 'freelance', 'income', '💻'],
   ['Netflix', 'subscriptions', 'subscription', '🎬'],
   ['Spotify', 'subscriptions', 'subscription', '🎵'],
   ['YouTube Premium', 'subscriptions', 'subscription', '▶️'],
@@ -73,7 +77,7 @@ export const PRESETS = [
 
 export function openPresetPicker() {
   openSheet({
-    title: 'Add subscription or bill',
+    title: 'Add a bill, subscription or payday',
     body: `<div class="preset-grid">${PRESETS.map((p, i) => `<button class="preset" data-p="${i}"><span class="e">${p[3]}</span>${esc(p[0])}</button>`).join('')}
       </div><div style="height:12px"></div><button class="btn block" data-custom>Something else…</button>`,
     onMount: (s, close) => {
@@ -90,11 +94,11 @@ export function openPresetPicker() {
 export function openRecurringSheet(r0 = {}) {
   const isNew = !r0.id;
   const r = { name: '', amount: '', kind: 'subscription', freq: 'monthly', nextDue: addDays(todayISO(), 1), category: 'subscriptions', method: state.settings.lastMethod || 'Cash', autoLog: undefined, active: true, ...r0 };
-  if (r.autoLog === undefined) r.autoLog = r.kind === 'subscription';
+  if (r.autoLog === undefined) r.autoLog = r.kind !== 'bill';
   openSheet({
-    title: isNew ? 'New ' + (r.kind === 'bill' ? 'bill' : 'subscription') : r.name,
+    title: isNew ? 'New ' + (r.kind === 'income' ? 'payday' : r.kind) : r.name,
     body: `<div class="form">
-      <div class="seg-ctl" data-kind><button data-k="subscription" class="${r.kind === 'subscription' ? 'on' : ''}">Subscription</button><button data-k="bill" class="${r.kind === 'bill' ? 'on' : ''}">Bill</button></div>
+      <div class="seg-ctl" data-kind><button data-k="subscription" class="${r.kind === 'subscription' ? 'on' : ''}">Subscription</button><button data-k="bill" class="${r.kind === 'bill' ? 'on' : ''}">Bill</button><button data-k="income" class="${r.kind === 'income' ? 'on' : ''}">Income</button></div>
       <label>Name<input class="field" data-f="name" value="${esc(r.name)}" placeholder="e.g. Netflix" maxlength="40"></label>
       <div class="row2">
         <label>Amount<input class="field num" data-f="amount" inputmode="decimal" value="${r.amount}" placeholder="0"></label>
@@ -103,11 +107,11 @@ export function openRecurringSheet(r0 = {}) {
         </select></label>
       </div>
       <div class="row2">
-        <label>Next due<input class="field" type="date" data-f="nextDue" value="${r.nextDue}"></label>
-        <label>Paid with<select class="field" data-f="method">${methodOptions(r.method)}</select></label>
+        <label><span data-due-lbl>${r.kind === 'income' ? 'Next payday' : 'Next due'}</span><input class="field" type="date" data-f="nextDue" value="${r.nextDue}"></label>
+        <label data-method-wrap style="${r.kind === 'income' ? 'visibility:hidden' : ''}">Paid with<select class="field" data-f="method">${methodOptions(r.method)}</select></label>
       </div>
-      <label>Category<select class="field" data-f="category">${catOptions(r.category)}</select></label>
-      <div class="toggle-row"><span class="lbl">Log automatically<small>Adds the expense on the due date. Turn off for bills that change each month.</small></span>
+      <label>Category<select class="field" data-f="category">${r.kind === 'income' ? srcOptions(r.category) : catOptions(r.category)}</select></label>
+      <div class="toggle-row"><span class="lbl">Log automatically<small>Adds it on the date. Turn off for amounts that change each time.</small></span>
         <label class="switch"><input type="checkbox" data-f="autoLog" ${r.autoLog ? 'checked' : ''}><span></span></label></div>
       ${!isNew ? `<div class="toggle-row"><span class="lbl">Active<small>Pause instead of deleting</small></span><label class="switch"><input type="checkbox" data-f="active" ${r.active ? 'checked' : ''}><span></span></label></div>` : ''}
       <p class="muted" data-yearly style="font-size:13px"></p>
@@ -123,13 +127,18 @@ export function openRecurringSheet(r0 = {}) {
       };
       f('amount').addEventListener('input', upd);
       f('freq').addEventListener('change', upd);
-      f('name').addEventListener('change', () => { if (isNew) { const g = guessCategory(f('name').value); if (g) f('category').value = g; } });
+      f('name').addEventListener('change', () => { if (isNew) { const g = kind === 'income' ? guessSource(f('name').value) : guessCategory(f('name').value); if (g) f('category').value = g; } });
       upd();
       s.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => {
         kind = b.dataset.k;
         s.querySelectorAll('[data-k]').forEach((x) => x.classList.toggle('on', x === b));
+        const wasIncome = INCOME_SOURCES.some((x) => x.id === f('category').value);
+        if (kind === 'income' && !wasIncome) f('category').innerHTML = srcOptions(guessSource(f('name').value) || 'salary');
+        if (kind !== 'income' && wasIncome) f('category').innerHTML = catOptions(kind === 'bill' ? 'bills' : 'subscriptions');
+        s.querySelector('[data-method-wrap]').style.visibility = kind === 'income' ? 'hidden' : '';
+        s.querySelector('[data-due-lbl]').textContent = kind === 'income' ? 'Next payday' : 'Next due';
         if (isNew) {
-          f('autoLog').checked = kind === 'subscription';
+          f('autoLog').checked = kind !== 'bill';
           if (kind === 'bill' && f('category').value === 'subscriptions') f('category').value = 'bills';
           if (kind === 'subscription' && f('category').value === 'bills') f('category').value = 'subscriptions';
         }
@@ -147,7 +156,7 @@ export function openRecurringSheet(r0 = {}) {
         toast(isNew ? `Added ${name}` : 'Saved');
       };
       s.querySelector('[data-del]')?.addEventListener('click', async () => {
-        if (await confirmSheet({ title: `Delete ${r.name}?`, message: 'Past expenses it logged stay in your history.', confirm: 'Delete', danger: true })) {
+        if (await confirmSheet({ title: `Delete ${r.name}?`, message: 'Past entries it logged stay in your history.', confirm: 'Delete', danger: true })) {
           await deleteRecurring(r.id);
           close();
           toast('Deleted');
@@ -159,12 +168,12 @@ export function openRecurringSheet(r0 = {}) {
 
 export function openPaySheet(r, date) {
   openSheet({
-    title: `Pay ${r.name}`,
+    title: r.kind === 'income' ? `Received ${r.name}?` : `Pay ${r.name}`,
     body: `<div class="form">
-      <p class="text-2" style="font-size:14px">Due ${fmtShort(date)} (${inDays(date)}). Bills vary — enter what you actually paid.</p>
-      <label>Amount paid<input class="field num" data-a inputmode="decimal" value="${r.amount}"></label>
-      <label>Paid on<input class="field" type="date" data-d value="${todayISO()}"></label>
-      <button class="btn primary block" data-ok>Mark as paid</button>
+      <p class="text-2" style="font-size:14px">${r.kind === 'income' ? 'Expected' : 'Due'} ${fmtShort(date)} (${inDays(date)}). Enter the actual amount.</p>
+      <label>${r.kind === 'income' ? 'Amount received' : 'Amount paid'}<input class="field num" data-a inputmode="decimal" value="${r.amount}"></label>
+      <label>${r.kind === 'income' ? 'Received on' : 'Paid on'}<input class="field" type="date" data-d value="${todayISO()}"></label>
+      <button class="btn primary block" data-ok>${r.kind === 'income' ? 'Mark as received' : 'Mark as paid'}</button>
     </div>`,
     onMount: (s, close) => {
       s.querySelector('[data-ok]').onclick = async () => {
@@ -172,7 +181,7 @@ export function openPaySheet(r, date) {
         if (!(a > 0)) return toast('Enter the amount');
         await markPaid(r, a, s.querySelector('[data-d]').value || todayISO());
         close();
-        toast(`${r.name} paid · next due ${fmtShort(r.nextDue)}`);
+        toast(`${r.name} ${r.kind === 'income' ? 'received' : 'paid'} · next ${fmtShort(r.nextDue)}`);
       };
     },
   });
@@ -186,7 +195,8 @@ export function openSettings() {
     tall: true,
     body: `<div class="form">
       <div class="section-label" style="margin-top:0">Money</div>
-      <label>Monthly take-home income<input class="field num" data-f="monthlyIncome" inputmode="decimal" value="${st.monthlyIncome || ''}" placeholder="Optional — unlocks the 50/30/20 check"></label>
+      <button class="btn block" data-savings>🥑 Update my savings</button>
+      <label>Expected monthly income<input class="field num" data-f="monthlyIncome" inputmode="decimal" value="${st.monthlyIncome || ''}" placeholder="Optional — otherwise uses income you log"></label>
       <label>Monthly spending budget<input class="field num" data-f="monthlyBudget" inputmode="decimal" value="${st.monthlyBudget || ''}" placeholder="e.g. 30000"></label>
       <button class="btn block" data-suggest>Suggest a budget for me</button>
       <button class="btn block" data-catbudgets>Category budgets ›</button>
@@ -204,7 +214,7 @@ export function openSettings() {
         <button class="option danger" data-x="erase">Erase all data</button>
       </div>
       <input type="file" accept="application/json,.json" data-restore hidden>
-      <p class="muted" style="font-size:12.5px;text-align:center;margin-top:6px">Everything is stored only on this iPhone. Back up regularly — deleting the app deletes its data.<br>Gastos 1.0</p>
+      <p class="muted" style="font-size:12.5px;text-align:center;margin-top:6px">Everything is stored only on this iPhone. Back up regularly — deleting the app deletes its data.<br>Avocado Money 2.0</p>
     </div>`,
     onMount: (s, close) => {
       const f = (k) => s.querySelector(`[data-f="${k}"]`);
@@ -221,6 +231,7 @@ export function openSettings() {
         toast(inc ? 'Set to 80% of income (needs + wants), leaving 20% to save' : 'Set to 90% of your recent monthly average');
       };
       s.querySelector('[data-catbudgets]').onclick = () => { close(); setTimeout(openCategoryBudgets, 220); };
+      s.querySelector('[data-savings]').onclick = () => { close(); setTimeout(openSavingsSheet, 220); };
       const restoreInput = s.querySelector('[data-restore]');
       restoreInput.onchange = async () => {
         const file = restoreInput.files[0];
@@ -238,19 +249,18 @@ export function openSettings() {
       s.querySelectorAll('[data-x]').forEach((b) => (b.onclick = async () => {
         const x = b.dataset.x;
         if (x === 'csv') {
-          const rows = [['Date', 'Amount', 'Category', 'Merchant', 'Paid with', 'Note']].concat(
-            state.expenses.map((e) => [e.date, e.amount, cat(e.category).name, e.merchant, e.method, e.note])
-          );
+          const rows = [['Date', 'Type', 'Amount', 'Category', 'Merchant / From', 'Paid with', 'Note']].concat(
+            state.expenses.map((e) => [e.date, 'Expense', -e.amount, cat(e.category).name, e.merchant, e.method, e.note]),
+            state.income.map((i) => [i.date, 'Income', i.amount, src(i.source).name, i.from, '', i.note])
+          ).sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0));
           const csv = rows.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-          saveFile(`gastos-${todayISO()}.csv`, csv, 'text/csv');
+          saveFile(`avocado-money-${todayISO()}.csv`, csv, 'text/csv');
         } else if (x === 'backup') {
-          saveFile(`gastos-backup-${todayISO()}.json`, JSON.stringify(await exportAll()), 'application/json');
+          saveFile(`avocado-money-backup-${todayISO()}.json`, JSON.stringify(await exportAll()), 'application/json');
         } else if (x === 'restore') restoreInput.click();
         else if (x === 'demo') {
-          const d = makeDemo();
-          const patch = !state.settings.monthlyIncome && !state.settings.monthlyBudget ? DEMO_SETTINGS : null;
-          await insertDemo(d.expenses, d.recurring, patch);
           close();
+          await loadDemo();
           toast('Demo data loaded — remove it any time in Settings');
           location.hash = '#/home';
         } else if (x === 'cleardemo') {
@@ -259,7 +269,7 @@ export function openSettings() {
           toast('Demo data removed');
         } else if (x === 'install') { close(); setTimeout(openInstallHelp, 220); }
         else if (x === 'erase') {
-          if (await confirmSheet({ title: 'Erase everything?', message: 'All expenses, bills, receipts and settings on this phone will be deleted. This cannot be undone.', confirm: 'Erase all data', danger: true })) {
+          if (await confirmSheet({ title: 'Erase everything?', message: 'All expenses, income, goals, bills, receipts and settings on this phone will be deleted. This cannot be undone.', confirm: 'Erase all data', danger: true })) {
             await eraseAll();
             close();
             toast('All data erased');
@@ -304,22 +314,193 @@ export function openInstallHelp() {
   saveSettings({ installHintShown: true });
   const installed = isStandalone();
   openSheet({
-    title: installed ? 'Quick add from your Home Screen' : 'Install Gastos on your iPhone',
+    title: installed ? 'Quick add from your Home Screen' : 'Install Avocado Money',
     body: `<div class="form">
       ${installed ? '' : `<ol class="steps">
         <li>Open this page in <b>Safari</b>.</li>
         <li>Tap the <b>Share</b> button (square with an arrow ↑).</li>
         <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
-        <li>Open Gastos from the new icon — it runs full-screen and works offline.</li>
+        <li>Open Avocado Money from the new icon — it runs full-screen and works offline.</li>
       </ol>`}
       <div class="section-label">Make it a one-tap "widget"</div>
       <ol class="steps">
-        <li>Put the Gastos icon in your <b>Dock</b> or on your first Home Screen page.</li>
-        <li>Gastos opens straight to Quick Add: type the amount, tap a category, Save. About 3 seconds.</li>
+        <li>Put the avocado icon in your <b>Dock</b> or on your first Home Screen page.</li>
+        <li>It opens straight to Quick Add: type the amount, tap a category, Save. About 3 seconds.</li>
         <li>Tap the <b>camera</b> button to snap a receipt — the amount, store and date are filled in for you.</li>
       </ol>
       <button class="btn primary block" data-ok>Got it</button>
     </div>`,
     onMount: (s, close) => (s.querySelector('[data-ok]').onclick = close),
   });
+}
+
+/* ---------------- Income entry ---------------- */
+export function openIncomeSheet(i) {
+  openSheet({
+    title: 'Edit income',
+    body: `<div class="form">
+      <label>Amount<input class="field num" data-f="amount" inputmode="decimal" value="${i.amount}"></label>
+      <label>From<input class="field" data-f="from" value="${esc(i.from)}" maxlength="60"></label>
+      <label>Type<select class="field" data-f="source">${srcOptions(i.source)}</select></label>
+      <label>Date<input class="field" type="date" data-f="date" value="${i.date}"></label>
+      <label>Note<input class="field" data-f="note" value="${esc(i.note)}" placeholder="Optional" maxlength="120"></label>
+      ${i.recurringId ? '<p class="muted" style="font-size:13px">🔁 Added automatically from a recurring payday.</p>' : ''}
+      <button class="btn primary block" data-save>Save changes</button>
+      <button class="btn block danger" data-del>Delete income</button>
+    </div>`,
+    onMount: (s, close) => {
+      const f = (k) => s.querySelector(`[data-f="${k}"]`);
+      s.querySelector('[data-save]').onclick = async () => {
+        const amount = num(f('amount').value);
+        if (!(amount > 0)) return toast('Enter an amount');
+        await updateIncome(i.id, { amount, from: f('from').value.trim(), source: f('source').value, date: f('date').value || i.date, note: f('note').value.trim() });
+        close();
+        toast('Saved');
+      };
+      s.querySelector('[data-del]').onclick = async () => {
+        const removed = await deleteIncome(i.id);
+        close();
+        toast(`Deleted +${money(i.amount)}`, { label: 'Undo', run: () => restoreIncome(removed) });
+      };
+    },
+  });
+}
+
+/* ---------------- Savings balance ---------------- */
+export function openSavingsSheet() {
+  const cur = savingsIsSet() ? Math.round(savingsBalance() * 100) / 100 : '';
+  openSheet({
+    title: 'Your savings',
+    body: `<div class="form">
+      <p class="text-2" style="font-size:14px">Enter how much you have saved right now (all your accounts and cash combined, or just your savings: your call). From here on, every income you log adds to it and every expense takes from it. Come back any time to correct it.</p>
+      <label>Savings right now<input class="field num" data-a inputmode="decimal" value="${cur}" placeholder="e.g. 25000"></label>
+      <button class="btn primary block" data-ok>Save</button>
+    </div>`,
+    onMount: (s, close) => {
+      const a = s.querySelector('[data-a]');
+      setTimeout(() => a.focus(), 300);
+      s.querySelector('[data-ok]').onclick = async () => {
+        if (a.value.trim() === '') return toast('Enter an amount (0 is fine)');
+        await setSavingsBalance(num(a.value));
+        close();
+        toast(`Savings set to ${money(num(a.value))}`);
+      };
+    },
+  });
+}
+
+/* ---------------- Goals ---------------- */
+export const GOAL_PRESETS = [
+  ['🛟', 'Emergency fund'], ['✈️', 'Travel'], ['📱', 'New phone'], ['💻', 'Laptop'], ['🏍️', 'Motorbike'], ['🚗', 'Car'],
+  ['🏠', 'House'], ['💍', 'Wedding'], ['🎓', 'Tuition'], ['🎄', 'Christmas'], ['👶', 'Baby'], ['🎁', 'Something else'],
+];
+
+export function openGoalSheet(g0 = {}) {
+  const isNew = !g0.id;
+  const g = { name: '', emoji: '🎯', target: '', saved: 0, deadline: '', ...g0 };
+  openSheet({
+    title: isNew ? 'Plant a new goal' : g.name,
+    body: `<div class="form">
+      ${isNew ? `<div class="preset-grid">${GOAL_PRESETS.map(([e, n], i) => `<button class="preset" data-p="${i}"><span class="e">${e}</span>${esc(n)}</button>`).join('')}</div>` : ''}
+      <div class="row2" style="grid-template-columns:72px 1fr">
+        <label>Icon<input class="field" data-f="emoji" value="${esc(g.emoji)}" maxlength="4" style="text-align:center;font-size:22px"></label>
+        <label>Goal name<input class="field" data-f="name" value="${esc(g.name)}" placeholder="e.g. Japan trip" maxlength="40"></label>
+      </div>
+      <div class="row2">
+        <label>Target amount<input class="field num" data-f="target" inputmode="decimal" value="${g.target}" placeholder="e.g. 50000"></label>
+        <label>${isNew ? 'Already saved' : 'Saved so far'}<input class="field num" data-f="saved" inputmode="decimal" value="${g.saved || ''}" placeholder="0"></label>
+      </div>
+      <label>Target date (optional)<input class="field" type="date" data-f="deadline" value="${g.deadline || ''}" min="${todayISO()}"></label>
+      <p class="muted" data-pace style="font-size:13px"></p>
+      <button class="btn primary block" data-save>${isNew ? '🌰 Plant goal' : 'Save changes'}</button>
+      ${!isNew ? '<button class="btn block danger" data-del>Delete goal</button>' : ''}
+    </div>`,
+    onMount: (s, close) => {
+      const f = (k) => s.querySelector(`[data-f="${k}"]`);
+      const upd = () => {
+        const p = goalPace({ target: num(f('target').value), saved: num(f('saved').value), deadline: f('deadline').value });
+        s.querySelector('[data-pace]').textContent = p && !p.overdue ? `Save about ${money(Math.ceil(p.perMonth))} a month (${money(Math.ceil(p.perWeek))} a week) to make it.` : '';
+      };
+      ['target', 'saved', 'deadline'].forEach((k) => f(k).addEventListener('input', upd));
+      upd();
+      s.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => {
+        const [e, n] = GOAL_PRESETS[+b.dataset.p];
+        f('emoji').value = e;
+        f('name').value = n === 'Something else' ? '' : n;
+        (n === 'Something else' ? f('name') : f('target')).focus();
+      }));
+      if (isNew) setTimeout(() => f('name').focus(), 300);
+      s.querySelector('[data-save]').onclick = async () => {
+        const name = f('name').value.trim();
+        const target = num(f('target').value);
+        if (!name) return toast('Give your goal a name');
+        if (!(target > 0)) return toast('Set a target amount');
+        const saved = num(f('saved').value);
+        const goal = { ...g, name, emoji: f('emoji').value.trim() || '🎯', target, deadline: f('deadline').value || '' };
+        if (isNew) {
+          goal.saved = 0;
+          await saveGoal(goal);
+          if (saved > 0) await depositGoal(goal, saved);
+          close();
+          celebrate({ emoji: '🌰', title: 'Goal <em>planted</em>', text: `${name}: ${money(target)}. Feed it and watch it grow into an avocado tree.` });
+        } else {
+          goal.saved = saved;
+          await saveGoal(goal);
+          close();
+          toast('Goal saved');
+        }
+      };
+      s.querySelector('[data-del]')?.addEventListener('click', async () => {
+        if (await confirmSheet({ title: `Delete ${g.name}?`, message: 'This removes the goal and its progress.', confirm: 'Delete', danger: true })) {
+          await deleteGoal(g.id);
+          close();
+          toast('Goal deleted');
+        }
+      });
+    },
+  });
+}
+
+export function openDepositSheet(g, withdraw = false) {
+  const st = goalStage(g);
+  const left = Math.max(0, g.target - g.saved);
+  const quick = [0.05, 0.1, 0.25].map((x) => Math.max(1, Math.round((g.target * x) / 100) * 100)).filter((v, i, a) => a.indexOf(v) === i);
+  openSheet({
+    title: withdraw ? `Take from ${g.name}` : `Feed ${g.name} ${st.emoji}`,
+    body: `<div class="form">
+      <p class="text-2" style="font-size:14px">${money(g.saved)} of ${money(g.target)}${left && !withdraw ? ` · ${money(left)} to go` : ''}</p>
+      <label>${withdraw ? 'Amount to take out' : 'Amount to add'}<input class="field num" data-a inputmode="decimal" placeholder="0"></label>
+      ${withdraw ? '' : `<div class="chips" style="margin:0">${quick.map((v) => `<button class="chip" data-q="${v}">+${money(v)}</button>`).join('')}${left ? `<button class="chip" data-q="${left}">All ${money(left)}</button>` : ''}</div>`}
+      <button class="btn primary block" data-ok>${withdraw ? 'Take out' : '🌱 Add to goal'}</button>
+      ${withdraw ? '' : '<button class="btn block" data-w>Take money out instead</button>'}
+      <button class="btn block" data-edit>Edit goal</button>
+    </div>`,
+    onMount: (s, close) => {
+      const a = s.querySelector('[data-a]');
+      setTimeout(() => a.focus(), 300);
+      s.querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => { a.value = b.dataset.q; }));
+      s.querySelector('[data-w]')?.addEventListener('click', () => { close(); setTimeout(() => openDepositSheet(g, true), 220); });
+      s.querySelector('[data-edit]').onclick = () => { close(); setTimeout(() => openGoalSheet({ ...g }), 220); };
+      s.querySelector('[data-ok]').onclick = async () => {
+        const v = num(a.value);
+        if (!(v > 0)) return toast('Enter an amount');
+        const before = goalStage(g);
+        const done = await depositGoal(g, withdraw ? -v : v);
+        close();
+        const after = goalStage(g);
+        if (done) celebrate({ emoji: '🥑', title: 'Harvest <em>time</em>', text: `You fully funded ${g.name}: ${money(g.target)}. +250 XP.` });
+        else if (!withdraw && after.name !== before.name) celebrate({ emoji: after.emoji, title: `It's a <em>${after.name.toLowerCase()}</em> now`, text: `${g.name} is ${Math.round(after.pct * 100)}% funded. Keep feeding it.`, small: true });
+        else toast(withdraw ? `Took ${money(v)} from ${g.name}` : `+${money(v)} to ${g.name} ${after.emoji}`);
+      };
+    },
+  });
+}
+
+export async function loadDemo() {
+  const d = makeDemo();
+  const patch = !state.settings.monthlyBudget && !savingsIsSet() ? d.settings : null;
+  for (const c of d.checkinDays) await checkIn(c, { silent: true });
+  await insertDemo(d.expenses, d.recurring, patch, d.income, d.goals);
+  toast('Demo data loaded — remove it any time in Settings');
+  location.hash = '#/home';
 }

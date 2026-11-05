@@ -34,13 +34,25 @@ export function dailyTotals(key, variableOnly = false) {
   return out;
 }
 
+export const incomeInMonth = (key) => state.income.filter((e) => e.date.startsWith(key));
+export const incomeBetween = (from, to) => state.income.filter((e) => e.date >= from && e.date <= to);
+
 export function monthlyTotals(endKey, n) {
   const out = [];
   for (let i = n - 1; i >= 0; i--) {
     const key = shiftMonthKey(endKey, -i);
-    out.push({ key, total: sum(inMonth(key)) });
+    out.push({ key, total: sum(inMonth(key)), income: sum(incomeInMonth(key)) });
   }
   return out;
+}
+
+/** Income to plan with: the Settings figure, or what you actually logged (this month if bigger, else the recent monthly average). */
+export function effectiveIncome(key = monthKey(todayISO())) {
+  const set = Number(state.settings.monthlyIncome) || 0;
+  if (set > 0) return set;
+  const prev = [1, 2, 3].map((i) => sum(incomeInMonth(shiftMonthKey(key, -i)))).filter((v) => v > 0);
+  const avg = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : 0;
+  return Math.max(avg, sum(incomeInMonth(key)));
 }
 
 export function monthlyEquivalent(r) {
@@ -51,7 +63,9 @@ export function monthlyEquivalent(r) {
     default: return r.amount;
   }
 }
-export const activeRecurring = () => state.recurring.filter((r) => r.active);
+/** Active bills & subscriptions (recurring income is tracked separately). */
+export const activeRecurring = () => state.recurring.filter((r) => r.active && r.kind !== 'income');
+export const activeIncomeRecurring = () => state.recurring.filter((r) => r.active && r.kind === 'income');
 export const fixedMonthly = (kind) =>
   activeRecurring().filter((r) => !kind || r.kind === kind).reduce((a, r) => a + monthlyEquivalent(r), 0);
 

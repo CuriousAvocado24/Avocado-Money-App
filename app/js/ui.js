@@ -125,3 +125,44 @@ export async function saveFile(name, text, type) {
 
 export const isStandalone = () => window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 export const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+/** Brand-colored confetti burst. */
+export function confetti() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#3F5B1F', '#A8C85A', '#D4DE6E', '#9A4A2C', '#F4D774', '#E9EFC0'];
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  for (let i = 0; i < 46; i++) {
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--dx', (Math.random() * 160 - 80).toFixed(0) + 'px');
+    p.style.setProperty('--r', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+    p.style.animationDelay = (Math.random() * 0.35).toFixed(2) + 's';
+    p.style.borderRadius = i % 3 ? '3px' : '50%';
+    box.appendChild(p);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 2400);
+}
+
+/** Celebration sheet for big moments (goal planted/harvested, level up, badges). title may contain <em>. */
+export function celebrate({ emoji, title, text, small = false }) {
+  confetti();
+  if (small) { toast(`${emoji} ${title.replace(/<[^>]+>/g, '')}`); return; }
+  openSheet({
+    body: `<div class="celebrate"><div class="big">${emoji}</div><h2>${title}</h2><p>${esc(text)}</p><button class="btn primary block" data-ok>Nice</button></div>`,
+    onMount: (s, close) => (s.querySelector('[data-ok]').onclick = close),
+  });
+}
+
+let popTimer = null;
+/** Little "+10 XP" pill at the top of the screen. */
+export function xpPop(text) {
+  let el = document.querySelector('.xp-pop');
+  if (!el) { el = document.createElement('div'); el.className = 'xp-pop'; el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  el.textContent = text;
+  requestAnimationFrame(() => el.classList.add('show'));
+  clearTimeout(popTimer);
+  popTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}

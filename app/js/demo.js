@@ -8,7 +8,7 @@ function rng(seed) {
   };
 }
 
-export const DEMO_SETTINGS = { monthlyIncome: 70000, monthlyBudget: 55000, categoryBudgets: { food: 8000, coffee: 2000, shopping: 3000 }, demoSettings: true };
+export const DEMO_SETTINGS = { monthlyIncome: 0, monthlyBudget: 55000, categoryBudgets: { food: 8000, coffee: 2000, shopping: 3000 }, demoSettings: true };
 
 export function makeDemo() {
   const r = rng(20261105);
@@ -67,6 +67,13 @@ export function makeDemo() {
     if (day === 25 && r() < 0.6) add(d, between(80, 150), 'bills', 'Late payment fee', 'Credit card', 'credit card late fee');
   }
 
+  // Income: salary every 15th and last day (kinsenas), plus some freelance work
+  const income = [];
+  for (let d = start; d <= today; d = addDays(d, 1)) {
+    const day = Number(d.slice(8));
+    if (r() < 0.06) income.push({ date: d, amount: between(2500, 9000), source: 'freelance', from: pick(['Upwork client', 'Logo project', 'Video edit gig']) });
+    if (day === 20 && r() < 0.3) income.push({ date: d, amount: between(200, 800), source: 'refund', from: 'Shopee refund' });
+  }
   const first = shiftMonthKey(curKey, -3);
   const rec = (name, amount, kind, category, day, method, freq = 'monthly') => ({
     name, amount, kind, category, method, freq, active: true, autoLog: true, nextDue: `${first}-${String(day).padStart(2, '0')}`,
@@ -81,5 +88,15 @@ export function makeDemo() {
     rec('Globe Postpaid', 999, 'bill', 'bills', 27, 'Credit card'),
     rec('Anytime Fitness', 1500, 'subscription', 'health', 3, 'Credit card'),
   ];
-  return { expenses: ex, recurring };
+  recurring.push(
+    { name: 'Salary', amount: 32500, kind: 'income', category: 'salary', method: 'Bank transfer', freq: 'monthly', active: true, autoLog: true, nextDue: `${first}-15` },
+    { name: 'Salary', amount: 32500, kind: 'income', category: 'salary', method: 'Bank transfer', freq: 'monthly', active: true, autoLog: true, nextDue: `${first}-30` },
+  );
+  const goals = [
+    { name: 'Emergency fund', emoji: '🛟', target: 150000, saved: 62000, deadline: addDays(today, 240), history: [{ date: addDays(today, -40), amount: 5000 }, { date: addDays(today, -20), amount: 5000 }, { date: addDays(today, -5), amount: 4000 }] },
+    { name: 'Japan trip', emoji: '✈️', target: 60000, saved: 21500, deadline: addDays(today, 150), history: [{ date: addDays(today, -12), amount: 3000 }, { date: addDays(today, -3), amount: 2000 }] },
+    { name: 'New phone', emoji: '📱', target: 45000, saved: 45000, deadline: '', completedAt: Date.now() - 86400000 * 9, history: [{ date: addDays(today, -9), amount: 6000 }] },
+  ];
+  const checkinDays = [addDays(today, -1), addDays(today, -4), addDays(today, -6)];
+  return { expenses: ex, recurring, income, goals, checkinDays, settings: { ...DEMO_SETTINGS, savingsStart: 38000, savingsStartDate: addDays(start, -1), savingsStartAt: 0 } };
 }
