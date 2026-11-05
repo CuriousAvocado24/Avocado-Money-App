@@ -61,7 +61,8 @@ If you later get access to a Mac, the app can be wrapped as a native app with a 
 - Deleting the Home Screen icon deletes the app's data.
 
 ## Updating the app
-Edit files in `app/`, re-upload (drag to Netlify again, or upload to GitHub), and bump `VERSION` in `app/sw.js`. Phones pick up the update the next time the app is opened.
+Edit files in `app/`, bump `VERSION` in `app/sw.js` and `APP_VERSION` in `app/js/version.js`, then push. GitHub Pages redeploys in about a minute.
+Phones get the update automatically: the app loads network-first when online, checks for a new version whenever it comes back to the foreground, and refreshes itself once a new version takes over (showing "Updated to version N"). **Settings → Check for updates** forces it. Your data is never touched by updates.
 
 ## Project layout
 ```

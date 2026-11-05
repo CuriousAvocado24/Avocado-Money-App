@@ -4,6 +4,7 @@ import { todayISO, addDays, addMonths, fmtShort, inDays } from './dates.js';
 import { CATEGORIES, METHODS, INCOME_SOURCES, cat, src, guessCategory, guessSource } from './categories.js';
 import { money, esc, CURRENCIES } from './format.js';
 import { openSheet, confirmSheet, toast, saveFile, isStandalone, celebrate } from './ui.js';
+import { APP_VERSION, APP_DATE } from './version.js';
 import { goalStage, goalPace } from './game.js';
 import { monthlyEquivalent } from './analytics.js';
 import { makeDemo, DEMO_SETTINGS } from './demo.js';
@@ -217,11 +218,12 @@ export function openSettings() {
         <button class="option" data-x="backup">💾 Back up everything</button>
         <button class="option" data-x="restore">♻️ Restore from backup</button>
         ${hasDemo() ? '<button class="option" data-x="cleardemo">🧹 Remove demo data</button>' : '<button class="option" data-x="demo">🧪 Load demo data</button>'}
+        <button class="option" data-x="update">🔄 Check for updates <span class="sub">v${APP_VERSION}</span></button>
         <button class="option" data-x="install">📲 Install on Home Screen</button>
         <button class="option danger" data-x="erase">Erase all data</button>
       </div>
       <input type="file" accept="application/json,.json" data-restore hidden>
-      <p class="muted" style="font-size:12.5px;text-align:center;margin-top:6px">Everything is stored only on this iPhone. Back up regularly — deleting the app deletes its data.<br>Avocado Money 2.0</p>
+      <p class="muted" style="font-size:12.5px;text-align:center;margin-top:6px">Everything is stored only on this iPhone. Back up regularly — deleting the app deletes its data.<br>Avocado Money · version ${APP_VERSION} (${APP_DATE})</p>
     </div>`,
     onMount: (s, close) => {
       const f = (k) => s.querySelector(`[data-f="${k}"]`);
@@ -276,6 +278,19 @@ export function openSettings() {
           close();
           toast('Demo data removed');
         } else if (x === 'install') { close(); setTimeout(openInstallHelp, 220); }
+        else if (x === 'update') {
+          if (!navigator.onLine) return toast('You are offline. Connect to check for updates.');
+          toast('Checking for updates…');
+          try {
+            const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+            if (reg) await reg.update();
+            // Drop the saved app files (not your data, not fonts) and reload fresh from the internet.
+            const keys = await caches.keys();
+            await Promise.all(keys.filter((k) => /^avocado-v|^gastos-v/.test(k)).map((k) => caches.delete(k)));
+          } catch (err) { console.warn(err); }
+          try { sessionStorage.setItem('justUpdated', 'manual'); } catch {}
+          location.reload();
+        }
         else if (x === 'erase') {
           if (await confirmSheet({ title: 'Erase everything?', message: 'All expenses, income, goals, debts, bills, receipts and settings on this phone will be deleted. This cannot be undone.', confirm: 'Erase all data', danger: true })) {
             await eraseAll();

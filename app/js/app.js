@@ -12,6 +12,7 @@ import * as debts from './views/debts.js';
 import * as tree from './views/tree.js';
 import { openInstallHelp } from './sheets.js';
 import { startNightly } from './nightly.js';
+import { APP_VERSION } from './version.js';
 
 const VIEWS = { add, home, activity, bills, insights, goals, debts, tree };
 const view = document.getElementById('view');
@@ -100,8 +101,31 @@ async function start() {
 
   const devHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !location.search.includes('sw=1');
   if ('serviceWorker' in navigator && location.protocol !== 'file:' && !devHost) {
-    navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e));
+    // updateViaCache 'none': always fetch a fresh sw.js so new versions are noticed right away.
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+      // iPhone home-screen apps often resume instead of reloading, so check for updates whenever you come back.
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+    }).catch((e) => console.warn('SW registration failed', e));
+    // When a new version takes over, refresh once (when you're not mid-typing) so you see it immediately.
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
+      const reloadWhenIdle = () => {
+        const a = document.activeElement;
+        if (document.querySelector('.sheet-wrap, .night') || (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'))) return setTimeout(reloadWhenIdle, 3000);
+        try { sessionStorage.setItem('justUpdated', '1'); } catch {}
+        location.reload();
+      };
+      reloadWhenIdle();
+    });
   }
+  try {
+    const why = sessionStorage.getItem('justUpdated');
+    if (why) {
+      sessionStorage.removeItem('justUpdated');
+      setTimeout(() => toast(why === 'manual' ? `🥑 You're on the latest version (v${APP_VERSION})` : `🥑 Updated to version ${APP_VERSION}`), 800);
+    }
+  } catch {}
   window.addEventListener('offline', () => toast('Offline — everything still works'));
 }
 

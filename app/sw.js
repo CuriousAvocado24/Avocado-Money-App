@@ -1,11 +1,15 @@
-// Offline support: the app shell is cached on first visit; fonts and the receipt reader are cached the first time they load.
-const VERSION = 'avocado-v5';
+// Offline support.
+// App files are NETWORK-FIRST: when you're online you always get the newest version (so updates show up on the
+// next open), and the saved copy is only used when you're offline or the network is very slow.
+// Fonts and the receipt reader are cache-first (big files that never change).
+const VERSION = 'avocado-v6';
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './css/app.css',
   './js/app.js',
+  './js/version.js',
   './js/analytics.js',
   './js/categories.js',
   './js/charts.js',
@@ -36,9 +40,15 @@ const SHELL = [
 ];
 const RUNTIME = 'avocado-runtime-v1';
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
+const NET_TIMEOUT = 4000;
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: 'reload' skips the browser's HTTP cache so a new version never saves old files.
+  e.waitUntil(
+    caches.open(VERSION)
+      .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -49,12 +59,22 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
+});
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then((v) => { clearTimeout(t); resolve(v); }, (err) => { clearTimeout(t); reject(err); });
+  });
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // OCR engine + language data: cache-first (large, versioned files)
   if (CDN.test(req.url)) {
     e.respondWith(
       caches.open(RUNTIME).then(async (c) => {
@@ -70,16 +90,21 @@ self.addEventListener('fetch', (e) => {
 
   if (url.origin !== location.origin) return;
 
-  // App files: serve from cache instantly, refresh in the background (updates apply on next launch)
-  e.respondWith(
-    caches.open(VERSION).then(async (c) => {
-      const key = req.mode === 'navigate' ? './index.html' : req;
-      const hit = await c.match(key, { ignoreSearch: true });
-      const net = fetch(req).then((res) => {
-        if (res.ok) c.put(key, res.clone());
+  e.respondWith((async () => {
+    const c = await caches.open(VERSION);
+    const nav = req.mode === 'navigate';
+    const key = nav ? './index.html' : url.pathname;
+    try {
+      // 'no-cache' = ask the server if the file changed (cheap when it hasn't).
+      const res = await withTimeout(fetch(nav ? './index.html' : url.href, { cache: 'no-cache', credentials: 'same-origin' }), NET_TIMEOUT);
+      if (res && res.ok) {
+        c.put(key, res.clone());
         return res;
-      }).catch(() => null);
-      return hit || (await net) || new Response('Offline', { status: 503 });
-    })
-  );
+      }
+      throw new Error('bad response');
+    } catch {
+      const hit = (await c.match(key)) || (await c.match(req, { ignoreSearch: true }));
+      return hit || new Response('Offline and not cached yet', { status: 503 });
+    }
+  })());
 });
