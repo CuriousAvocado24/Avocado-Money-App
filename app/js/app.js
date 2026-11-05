@@ -9,10 +9,11 @@ import * as bills from './views/bills.js';
 import * as insights from './views/insights.js';
 import * as goals from './views/goals.js';
 import * as debts from './views/debts.js';
+import * as tree from './views/tree.js';
 import { openInstallHelp } from './sheets.js';
 import { startNightly } from './nightly.js';
 
-const VIEWS = { add, home, activity, bills, insights, goals, debts };
+const VIEWS = { add, home, activity, bills, insights, goals, debts, tree };
 const view = document.getElementById('view');
 let current = null;
 let lastDay = todayISO();
@@ -30,7 +31,7 @@ function route() {
   }
   const changed = name !== current;
   current = name;
-  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === (name === 'debts' ? 'goals' : name === 'bills' ? 'home' : name)));
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === (name === 'debts' ? 'goals' : name === 'bills' ? 'home' : name === 'insights' ? 'tree' : name)));
   VIEWS[name].render(view);
   if (changed) window.scrollTo(0, 0);
 }

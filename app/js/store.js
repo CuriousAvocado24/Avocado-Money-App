@@ -90,6 +90,12 @@ export async function saveSettings(patch) {
   emit();
 }
 
+/** Save settings without re-rendering (for background bookkeeping like the tree's health history). */
+export async function saveSettingsQuiet(patch) {
+  Object.assign(state.settings, patch);
+  await db.put('meta', { ...state.settings }, 'settings');
+}
+
 async function learn(e) {
   const k = normMerchant(e.merchant);
   if (!k || state.merchantMap[k] === e.category) return;

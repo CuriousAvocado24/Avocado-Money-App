@@ -6,7 +6,7 @@ import { openSettings } from '../sheets.js';
 
 export function render(root) {
   const { insights, totalSave, ready } = buildInsights();
-  let html = `<div class="page-head"><h1>Where to <em>cut</em></h1></div>`;
+  let html = `<div class="page-head"><h1>Where to <em>cut</em></h1><a class="pill" href="#/tree">🥑 Tree</a></div>`;
   if (!ready) {
     html += `<div class="card empty"><div class="big">💡</div><h2>Insights are <em>warming up</em></h2><p>Log at least a few days of expenses and Avocado Money will spot patterns and tell you exactly where to cut.</p><div class="btns"><a class="btn primary" href="#/add">Add an expense</a></div></div>`;
   } else {

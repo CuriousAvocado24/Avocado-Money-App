@@ -1,5 +1,5 @@
 // Offline support: the app shell is cached on first visit; fonts and the receipt reader are cached the first time they load.
-const VERSION = 'avocado-v4';
+const VERSION = 'avocado-v5';
 const SHELL = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const SHELL = [
   './js/game.js',
   './js/receipt.js',
   './js/sheets.js',
+  './js/tree.js',
   './js/store.js',
   './js/ui.js',
   './js/views/activity.js',
@@ -28,6 +29,7 @@ const SHELL = [
   './js/views/goals.js',
   './js/views/home.js',
   './js/views/insights.js',
+  './js/views/tree.js',
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
